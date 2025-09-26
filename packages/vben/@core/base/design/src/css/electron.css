@@ -1,0 +1,21 @@
+.can-app-drag {
+  -webkit-app-region: drag;
+}
+.no-app-drag {
+  -webkit-app-region: no-drag;
+}
+
+.not-draggable-area {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+html {
+  font-size: 16px;
+}
+
+.vxe-grid--pager-wrapper > .vxe-pager {
+  margin-top: 0px !important;
+}
