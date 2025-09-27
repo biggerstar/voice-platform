@@ -19,8 +19,10 @@ export class WindowManager {
       sandbox: false,
       nodeIntegration: false,
       contextIsolation: false,
+      webSecurity: false,
       preload: globalMainPathParser.resolvePreload('browser.cjs').toString(),
       partition: 'persist:encommerce',
+      allowRunningInsecureContent: true,
     };
     this.eventManager = WindowEventManager.getInstance();
   }

@@ -35,6 +35,16 @@ export default defineConfig(async (config: ConfigEnv): Promise<UserConfig> => {
         watchDir: 'src/preload',
         minify: true,
         resolveAlias: { '@': path.resolve(__dirname, 'src') },
+        vite: {
+          build: {
+            chunkSizeWarningLimit: 2000,
+            rollupOptions: {
+              external: [
+                '@yxim/nim-web-sdk'
+              ]
+            }
+          }
+        }
       }),
       copyInPackagePlugin([
         {

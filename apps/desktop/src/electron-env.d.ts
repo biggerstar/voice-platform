@@ -39,6 +39,11 @@ interface Window {
 
 interface Window {
   __HOME_PAGE_HTML__: string
+  SDK: import('@yxim/nim-web-sdk')
+  Util: Record<any, any>
+  HTTP: Record<any, any>
+  Chatroom: Record<any, any>
+  NIM: Record<any, any>
 }
 
 interface Document {

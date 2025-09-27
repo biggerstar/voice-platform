@@ -33,7 +33,7 @@ export class MainWindow extends BaseApplication<BaseHashRouterBrowserWindow> {
     this.win.webContents.setBackgroundThrottling(false)
     // this.win.gotoHashRouter({hash: '/'}).then();
     this.win.gotoHashRouter({ hash: '/daidai' }).then();
-    this.win.webContents.openDevTools({ mode: 'right' })
+    // this.win.webContents.openDevTools({ mode: 'right' })
     console.log(os.arch(), process.arch);
     this.win.webContents.on('did-navigate-in-page', (_, url) => {
       const urlInfo = new URL(url);
@@ -57,6 +57,9 @@ export class MainWindow extends BaseApplication<BaseHashRouterBrowserWindow> {
       this.win.setResizable(!globalEnv.isProd);
       this.win.setMaximizable(!globalEnv.isProd);
       this.win.center();
+      if (globalEnv.isDev) {
+        this.win.maximize()
+      }
       this.__nextResetDefaultWindowSize = false;
     }
   }

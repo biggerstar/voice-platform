@@ -21,6 +21,13 @@ ipcMain.handle('load-url', (_, url) => {
   }
 })
 
+
+ipcMain.handle('close-window', (_, url) => {
+  if (browserinternetView.isRunning()) {
+    browserinternetView.close()
+  }
+})
+
 ipcMain.handle('get-current-url', (_, url) => {
   if (browserinternetView.isRunning()) {
     return browserinternetView.win.webContents.getURL()
@@ -35,7 +42,10 @@ ipcMain.handle('reopen-browser', (_, options = {}) => {
     options: {
       webPreferences: {
         preload: globalMainPathParser.resolvePreload('browser.cjs').toString(),
-        partition: name ? 'persist:' + md5(String(type) + name) : 'persist:encommerce'
+        partition: name ? 'persist:' + md5(String(type) + name) : 'persist:encommerce',
+        additionalArguments: [
+          `daidai-name=${name}`
+        ]
       }
     }
   })

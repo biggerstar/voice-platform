@@ -21,11 +21,14 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     },
   },
   "include": [
     "./src/**/*",
-    "vite.config.mts"
-, "public"  ],
+    "vite.config.mts",
+    "public"
+  ],
 }

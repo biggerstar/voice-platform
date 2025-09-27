@@ -8,7 +8,7 @@ useTitlebar({
   resetPosition: true,
   overflowHidden: true,
   titleSuffix: {
-    suffix: ` FLJ内部使用-淘宝1688爬取信息`,
+    suffix: ` 语聊管理`,
     showVersion: false,
     separator: ' - ',
   }
@@ -36,6 +36,9 @@ const __API__ = {
   async getAccountSessionList(options = {}) {
     return ipcRenderer.invoke('get-account-session-data', options)
   },
+  async getOneAccountSession(name: string) {
+    return ipcRenderer.invoke('get-one-account-session-data', name)
+  },
   async updateAccountSession(id: string, data: Record<any, any> = {}) {
     return ipcRenderer.invoke('update-account-session', id, data)
   },
@@ -54,11 +57,17 @@ const __API__ = {
   loadURL(url: string) {
     return ipcRenderer.invoke('load-url', url);
   },
+  close(url: string) {
+    return ipcRenderer.invoke('close-window', url);
+  },
   getURL() {
     return ipcRenderer.invoke('get-current-url');
   },
   reopenBrowser(options: any) {
     return ipcRenderer.invoke('reopen-browser', options);
+  },
+  axiosRequest(config: any) {
+    return ipcRenderer.invoke('axios-request', config);
   }
 }
 window['__API__'] = __API__;

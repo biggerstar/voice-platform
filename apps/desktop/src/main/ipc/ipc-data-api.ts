@@ -130,6 +130,32 @@ ipcMain.handle('delete-account-session', (_ev: any, ids: string[]) => {
   AccountSessionEntity.delete(ids)
 })
 
+ipcMain.handle('get-one-account-session-data', async (_ev, name: string) => {
+  try {
+    const accountSession = await AccountSessionEntity.findOne({
+      where: { name: name.toString() }
+    });
+
+    if (!accountSession) {
+      return {
+        code: 404,
+        message: 'Account session not found'
+      };
+    }
+
+    return {
+      code: 0,
+      data: accountSession
+    };
+  } catch (error) {
+    console.error('Error updating account session:', error);
+    return {
+      code: 500,
+      message: 'Internal server error'
+    };
+  }
+});
+
 // 更新账号会话
 ipcMain.handle('update-account-session', async (_ev: any, id: string, data: Record<any, any>) => {
   try {

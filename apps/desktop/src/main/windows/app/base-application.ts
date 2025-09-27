@@ -13,7 +13,9 @@ export abstract class BaseApplication<WindowType extends BrowserWindow> {
       app.quit();
       process.exit(0);
     }
-
+    const KDisableSiteIsolation = '--disable-site-isolation-trials';
+    app.commandLine.appendSwitch(KDisableSiteIsolation);
+  
     globalEnv.disableSecurityWarnings();
 
     powerSaveBlocker.start('prevent-app-suspension') // 阻止进入休眠

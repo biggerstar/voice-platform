@@ -14,6 +14,9 @@ export class AccountSessionEntity extends BaseEntity {
   @Column({ type: 'varchar', nullable: true })
   remark: string
 
+  @Column({ type: 'varchar', nullable: true })
+  status: string
+
   @Column({ type: 'json', nullable: true })
   data: Record<any, any>
 

@@ -4,7 +4,7 @@ import { registerAccessDirective } from '@vben/access';
 import { initTippy, registerLoadingDirective, setDefaultModalProps } from '@vben/common-ui';
 import { MotionPlugin } from '@vben/plugins/motion';
 import { preferences } from '@vben/preferences';
-import { initStores } from '@vben/stores';
+import { initStores, useAccessStore } from '@vben/stores';
 import '@vben/styles';
 import '@vben/styles/antd';
 
@@ -48,6 +48,10 @@ async function bootstrap(namespace: string) {
 
   // 配置 pinia-tore
   await initStores(app, { namespace });
+
+  // 固定无需登录就能使用
+  const accessStore = useAccessStore();
+  accessStore.setAccessToken('fakeToken');
 
   // 安装权限指令
   registerAccessDirective(app);

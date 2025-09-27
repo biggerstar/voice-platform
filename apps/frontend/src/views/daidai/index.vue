@@ -6,59 +6,15 @@ import type {
 
 import { Page, useVbenModal } from '@vben/common-ui';
 
-import { Button, message } from 'ant-design-vue';
+import { Button } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 
 import type { CompanyUserApi } from '#/api/company/user';
 import AccountSessoinViewer from '#/components/AccountSessoinViewer.vue';
-import ImageViewer from '#/components/ImageViewer.vue';
-import VideoViewer from '#/components/VideoViewer.vue';
-import { onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted } from 'vue';
 import { useColumns, useGridFormSchema } from './data';
-
-const showImageViewer = ref(false);
-const currentExportImagesOptions = ref({})
-const imageViewerRef = ref()
-
-// 视频导出相关
-const showVideoViewer = ref(false);
-const currentExportVideosOptions = ref({})
-const videoViewerRef = ref()
-
-const [downloadImagesModal, downloadImagesModalApi] = useVbenModal({
-  showCancelButton: false,
-  confirmText: '导出选中图片',
-  async onConfirm() {
-    if (imageViewerRef.value) {
-      const result = await imageViewerRef.value.exportZip()
-      if (result) {
-        gridApi.query()
-        downloadImagesModalApi.close()
-      }
-    }
-  },
-  onClosed: () => {
-    showImageViewer.value = false;
-  },
-});
-
-const [downloadVideosModal, downloadVideosModalApi] = useVbenModal({
-  showCancelButton: false,
-  confirmText: '下载选中视频',
-  async onConfirm() {
-    if (videoViewerRef.value) {
-      const result = await videoViewerRef.value.downloadSelectedVideos()
-      if (result) {
-        gridApi.query()
-        downloadVideosModalApi.close()
-      }
-    }
-  },
-  onClosed: () => {
-    showVideoViewer.value = false;
-  },
-});
+// Socket 实现在 Electron preload 中通过 window 暴露
 
 const [accountSessionModel, modalApi] = useVbenModal({
   showCancelButton: false,
@@ -126,7 +82,7 @@ const [Grid, gridApi] = useVbenVxeGrid({
     },
     toolbarConfig: {
       custom: true,
-      export: true,
+      export: false,
       refresh: { code: 'query' },
       search: false,
       zoom: false,
@@ -167,71 +123,6 @@ function parsePresale(row: any) {
   return row.title.includes('预售') ? '是' : ''
 }
 
-function exportImages() {
-  currentExportVideosOptions.value = {}
-  currentExportImagesOptions.value = {}
-  const grid = gridApi.grid
-  const selecterRecordList = grid.getCheckboxRecords()
-  const selecterRecord = selecterRecordList[0]
-  if (selecterRecordList.length == 0) {
-    message.warning('请选择需要导出的产品')
-    return
-  }
-  if (selecterRecordList.length > 1) {
-    message.warning('一次只能选择一个产品导出图片')
-    return
-  }
-  showImageViewer.value = true;
-  downloadImagesModalApi.open()
-  currentExportImagesOptions.value = {
-    fileName: selecterRecord.title,
-    images: [
-      {
-        name: '主图',
-        urls: Array.from(selecterRecord.data?.mainImages || []).map(url => ({ src: url, name: '' }))
-      },
-      {
-        name: '详情图',
-        urls: Array.from(selecterRecord.data?.descImages || []).map(url => ({ src: url, name: '' }))
-      },
-      {
-        name: 'SKU图',
-        urls: selecterRecord.data?.skuImages || []
-      }
-    ]
-  }
-  console.log(`🚀 ~ exportImages ~ currentExportImagesOptions.value :`, currentExportImagesOptions.value)
-}
-
-function exportVideos() {
-  const grid = gridApi.grid
-  const selecterRecordList = grid.getCheckboxRecords()
-  const selecterRecord = selecterRecordList[0]
-  if (selecterRecordList.length == 0) {
-    message.warning('请选择需要导出的产品')
-    return
-  }
-  if (selecterRecordList.length > 1) {
-    message.warning('一次只能选择一个产品导出视频')
-    return
-  }
-  showVideoViewer.value = true;
-  downloadVideosModalApi.open()
-  currentExportVideosOptions.value = {
-    fileName: selecterRecord.title,
-    videos: [
-      {
-        name: '产品视频',
-        urls: Array.from(selecterRecord.data?.videos || []).map((video: any, index: number) => ({
-          src: video.url,
-          name: video.title || `${selecterRecord.title}-${index + 1}` || ''
-        }))
-      }
-    ]
-  }
-  console.log(`🚀 ~ exportVideos ~ currentExportVideosOptions.value :`, currentExportVideosOptions.value)
-}
-
 function deleteRows() {
   const grid = gridApi.grid
   const selecterRecord = grid.getCheckboxRecords()
@@ -244,6 +135,13 @@ function parseDetailUrl(row: any) {
   __API__.showWindow()
   __API__.loadURL(row.detailUrl)
 }
+
+function testSocket() {
+}
+
+async function startWork() {
+}
+
 
 let curTotal = -1
 let loopUpdateTimer: any
@@ -263,8 +161,8 @@ onUnmounted(() => {
 
 </script>
 <template>
-  <Page auto-content-height>
-    <Grid :table-title="'多多选品'">
+  <Page class="h-[98%]">
+    <Grid :table-title="'带带监控'">
       <template #display_id="{ row }">
         <Button type="link" @click="() => parseDetailUrl(row)">{{ row['title'] }}</Button>
       </template>
@@ -281,11 +179,8 @@ onUnmounted(() => {
         <div>{{ parseRemark(row) }}</div>
       </template>
       <template #toolbar-tools>
-        <Button class="mr-2" @click="exportImages()">
-          导出图片
-        </Button>
-        <Button class="mr-2" @click="exportVideos()">
-          导出视频
+        <Button class="mr-2" type="primary" @click="() => startWork()">
+          开始运行
         </Button>
         <Button class="mr-2" type="primary" danger @click="deleteRows()">
           删除
@@ -293,17 +188,14 @@ onUnmounted(() => {
         <Button class="mr-2" type="primary" @click="() => modalApi.open()">
           管理账号
         </Button>
+        <Button class="mr-2" type="primary" @click="() => testSocket()">
+          测试 Socket
+        </Button>
       </template>
     </Grid>
     <accountSessionModel class="w-[80%]" title="账号管理">
-      <AccountSessoinViewer :type="'pdd'" :default-url="'https://mobile.yangkeduo.com'" />
+      <AccountSessoinViewer :type="'pdd'" :default-url="'https://play.daidaimeta.com/index/main'" />
     </accountSessionModel>
-    <downloadImagesModal class="w-[80%]" title="图片导出">
-      <ImageViewer v-if="showImageViewer" ref="imageViewerRef" :options="currentExportImagesOptions" />
-    </downloadImagesModal>
-    <downloadVideosModal class="w-[80%]" title="视频导出">
-      <VideoViewer v-if="showVideoViewer" ref="videoViewerRef" :options="currentExportVideosOptions" />
-    </downloadVideosModal>
   </Page>
 </template>
 

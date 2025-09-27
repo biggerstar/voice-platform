@@ -18,10 +18,12 @@
   },
   "dependencies": {
     "@xcodebuild/global-proxy": "^0.0.6",
+    "@yxim/nim-web-sdk": "^9.20.16",
     "custom-electron-titlebar": "^4.2.8",
     "deepmerge": "^4.3.1",
     "iconv-lite": "^0.6.3",
     "md5": "^2.3.0",
+    "p-queue": "^8.1.1",
     "reflect-metadata": "^0.2.2",
     "set-global-proxy": "^0.2.4",
     "sqlite3": "^5.1.2",

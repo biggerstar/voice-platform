@@ -5,7 +5,7 @@ import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { useVbenModal } from '@vben/common-ui';
 import { Button, message } from 'ant-design-vue';
 import dayjs from 'dayjs';
-import { inject, onMounted, toRaw } from 'vue';
+import { onMounted } from 'vue';
 
 const { type, defaultUrl } = defineProps({
   type: {
@@ -18,8 +18,6 @@ const { type, defaultUrl } = defineProps({
   }
 })
 
-// 注入父组件提供的方法
-const handleBrowserOpen = inject('handleBrowserOpen') as ((row: any) => void) | undefined
 
 // 日期格式化函数
 const formatTimeField = (time: string | Date | null): string => {
@@ -65,6 +63,57 @@ const [createModal, createModalApi] = useVbenModal({
   }
 });
 
+// 配置房间模态框
+let currentRowData: any = null
+const [ConfigModal, configModalApi] = useVbenModal({
+  async onConfirm() {
+    const values = await configFormApi.getValues()
+    const roomText = values.rooms || ''
+
+    // 解析房间：按逗号分隔并去除空格
+    const rooms = roomText
+      .split(/[,，]/)
+      .map((room: string) => room.trim())
+      .filter((room: string) => room.length > 0)
+
+    if (rooms.length === 0) {
+      message.warn('请输入至少一个房间')
+      return
+    }
+
+    if (!currentRowData) {
+      message.warn('未找到当前行数据')
+      return
+    }
+
+    // 在这里处理配置房间的逻辑
+    await __API__.updateAccountSession(currentRowData.id, {
+      data: { rooms },
+    })
+
+    configModalApi.close()
+    message.success(`已配置 ${rooms.length} 个房间`)
+    gridApi.reload()
+  }
+});
+
+// 配置房间表单
+const [configForm, configFormApi] = useVbenForm({
+  showDefaultActions: false,
+  schema: [
+    {
+      component: 'Textarea',
+      componentProps: {
+        placeholder: '请输入房间，多个房间用逗号分隔，例如：房间1,房间2,房间3',
+        rows: 5,
+      },
+      fieldName: 'rooms',
+      label: '房间配置',
+      rules: 'required',
+    },
+  ]
+})
+
 // 新建表单
 const [createForm, createFormApi] = useVbenForm({
   showDefaultActions: false,
@@ -89,6 +138,7 @@ const [createForm, createFormApi] = useVbenForm({
     },
   ]
 })
+
 
 // 表格配置
 const [Grid, gridApi] = useVbenVxeGrid({
@@ -135,7 +185,7 @@ const [Grid, gridApi] = useVbenVxeGrid({
       {
         field: 'action',
         title: '操作',
-        width: 130,
+        width: 260,
         slots: {
           default: 'action'
         }
@@ -194,12 +244,17 @@ function openBrowser(row: any) {
     type: 'pdd',
     name: row.name
   })
-  
-  // 尝试通过 inject 调用父组件方法
-  if (handleBrowserOpen) {
-    handleBrowserOpen(toRaw(row))
-  }
 }
+
+function openConfigModal(row: any) {
+  currentRowData = row
+  // 从 currentRowData 加载数据
+  const savedRooms = row.data?.rooms || []
+  // 重置表单并填充数据
+  configFormApi.setValues({ rooms: savedRooms.join(', ') })
+  configModalApi.open()
+}
+
 
 // 格式化数据显示
 function formatData(data: any) {
@@ -220,7 +275,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <Grid :table-title="`账号会话管理`">
+  <Grid :table-title="`房间会话管理`">
     <template #data="{ row }">
       <div style="max-height: 100px; overflow-y: auto; font-size: 12px; white-space: pre-wrap;">
         {{ formatData(row.data) }}
@@ -230,17 +285,23 @@ onMounted(() => {
       <Button class="mr-2" type="primary" @click="openBrowser(row)">
         打开
       </Button>
+      <Button class="mr-2" type="primary" @click="openConfigModal(row)">
+        配置房间
+      </Button>
     </template>
     <template #toolbar-tools>
       <Button class="mr-2" type="primary" danger @click="deleteRows()">
         删除
       </Button>
       <Button class="mr-2" type="primary" @click="() => createModalApi.open()">
-        添加账号会话
+        添加房间会话
       </Button>
-      <createModal class="w-[600px]" title="账号管理">
+      <createModal class="w-[600px]" title="房间管理">
         <createForm></createForm>
       </createModal>
+      <ConfigModal class="w-[600px]" title="配置房间">
+        <configForm></configForm>
+      </ConfigModal>
     </template>
   </Grid>
 </template>

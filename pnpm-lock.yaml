@@ -679,6 +679,9 @@ importers:
       '@xcodebuild/global-proxy':
         specifier: ^0.0.6
         version: 0.0.6
+      '@yxim/nim-web-sdk':
+        specifier: ^9.20.16
+        version: 9.20.16
       custom-electron-titlebar:
         specifier: ^4.2.8
         version: 4.2.8(electron@34.5.4)
@@ -691,6 +694,9 @@ importers:
       md5:
         specifier: ^2.3.0
         version: 2.3.0
+      p-queue:
+        specifier: ^8.1.1
+        version: 8.1.1
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -4916,6 +4922,9 @@ packages:
     resolution: {integrity: sha512-2WALfTl4xo2SkGCYRt6rDTFfk9R1czmBvUQy12gK2KuRKIpWEhcbbzy8EZXtz/jkRqHX8bFEc6FC1HjX4TUWYw==}
     engines: {node: '>=10.0.0'}
 
+  '@yxim/nim-web-sdk@9.20.16':
+    resolution: {integrity: sha512-5+zynExi1jP160DiR/atTfw8c08s+iL8RafkAB2vu7KJ1Bu8w6zJAhzY0qFbhJamEmYu5X8mmYgwlKEl580eeg==}
+
   JSONStream@1.3.5:
     resolution: {integrity: sha512-E+iruNOY8VV9s4JEbe1aNEm6MiszPRr/UfcHMz0TQh1BXSxHK+ASV1R6W4HpjBhSeS+54PIsAMCBmwD06LLsqQ==}
     hasBin: true
@@ -8575,6 +8584,10 @@ packages:
 
   p-queue@8.1.0:
     resolution: {integrity: sha512-mxLDbbGIBEXTJL0zEx8JIylaj3xQ7Z/7eEVjcF9fJX4DBiH9oqe+oahYnlKKxm0Ci9TlWTyhSHgygxMxjIB2jw==}
+    engines: {node: '>=18'}
+
+  p-queue@8.1.1:
+    resolution: {integrity: sha512-aNZ+VfjobsWryoiPnEApGGmf5WmNsCo9xu8dfaYamG5qaLP7ClhLN6NgsFe6SwJ2UbLEBK5dv9x8Mn5+RVhMWQ==}
     engines: {node: '>=18'}
 
   p-timeout@6.1.4:
@@ -14999,6 +15012,8 @@ snapshots:
 
   '@xmldom/xmldom@0.8.10': {}
 
+  '@yxim/nim-web-sdk@9.20.16': {}
+
   JSONStream@1.3.5:
     dependencies:
       jsonparse: 1.3.1
@@ -19323,6 +19338,11 @@ snapshots:
       aggregate-error: 3.1.0
 
   p-queue@8.1.0:
+    dependencies:
+      eventemitter3: 5.0.1
+      p-timeout: 6.1.4
+
+  p-queue@8.1.1:
     dependencies:
       eventemitter3: 5.0.1
       p-timeout: 6.1.4

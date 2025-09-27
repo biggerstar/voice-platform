@@ -66,15 +66,6 @@ export class GlobalRendererPathParser {
   }
 
   /**
-   * 基于 electron 产物目录下的 public |  APP_WORK_ROOT 路径解析
-   * */
-  public resolvePublic(...args: string[]): TypeGlobalPathParserResult {
-    return globalEnv.getWebRootUrl()
-      ? this.resolveWeb.apply(this, [ApplicationDirEnum.public.toString()].concat(args))
-      : this.resolveWeb();
-  }
-
-  /**
    * 解析 preload 路径
    * */
   public resolvePreload(...args: string[]): TypeGlobalPathParserResult {

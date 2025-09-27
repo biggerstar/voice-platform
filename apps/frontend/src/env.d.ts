@@ -7,13 +7,17 @@ declare global {
     exportMediaResrouce: Function
     __VBEN_ADMIN_METADATA__: Record<any, any>
     _SERVER_API_: string
+    SDK: import('@yxim/nim-web-sdk')
+    Util: Record<any, any>
   }
 
   declare const __API__: {
+    axiosRequest(config: any): Promise<any>
     login(form: any): Promise<any>
     showWindow(): Promise<void>
     hideWindow(): Promise<void>
     isShow(): Promise<boolean>
+    close(): Promise<boolean>
     loadURL(url: string): Promise<void>
     reopenBrowser(options: Record<any, any>): Promise<void>
     getURL(): Promise<void | string>

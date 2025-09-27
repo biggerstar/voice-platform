@@ -106,8 +106,9 @@ const [accountSessionModel, accountSessionModelModalApi] = useVbenModal({
 });
 
 async function doDisplayWindow() {
-  await __API__.isShow() ? __API__.hideWindow() : __API__.showWindow();
-  displayWindow.value = await __API__.isShow();
+  // await __API__.isShow() ? __API__.hideWindow() : __API__.showWindow();
+  // displayWindow.value = await __API__.isShow();
+  __API__.close()
 }
 
 setInterval(async () => {
@@ -398,14 +399,14 @@ watch(
           </AButton>
         </ASpace>
         <ASpace direction="vertical">
-          <AButton @click="() => loadURL('about:blank')" v-show="displayWindow" style="width: 70px;">
+          <!-- <AButton @click="() => loadURL('about:blank')" v-show="displayWindow" style="width: 70px;">
             首页
           </AButton>
-          <AButton @click="() => loadURL('https://www.taobao.com')" v-show="displayWindow"
-            style="width: 70px; color: #ff5502;">
-            淘宝
-          </AButton>
-          <AButton @click="() => loadURL('https://www.tmall.com')" v-show="displayWindow"
+          <AButton @click="() => loadURL('https://play.daidaimeta.com/index/main')" v-show="displayWindow"
+            style="width: 70px; color: #351c87;">
+            带带
+          </AButton> -->
+          <!-- <AButton @click="() => loadURL('https://www.tmall.com')" v-show="displayWindow"
             style="width: 70px; color: #e4393c;">
             天猫
           </AButton>
@@ -416,9 +417,10 @@ watch(
           <AButton @click="() => loadURL('https://mobile.yangkeduo.com', 'pdd')" v-show="displayWindow"
             style="width: 70px; color: #e62829;">
             多多
-          </AButton>
+          </AButton> -->
           <AButton @click="doDisplayWindow" :type="displayWindow ? 'primary' : 'text'">
-            {{ displayWindow ? '隐 藏' : '选 品' }}
+            <!-- {{ displayWindow ? '隐 藏' : '浏览器' }} -->
+            {{ displayWindow ? '关 闭' : '' }}
           </AButton>
         </ASpace>
         <accountSessionModel class="w-[80%]" title="账号管理">
