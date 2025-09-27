@@ -26,7 +26,7 @@ export class DaiDaiChatRoomSocket extends BaseNimSocket<import('@yxim/nim-web-sd
       throw new Error('没有设置 roomid')
     }
     updateLog(this.sessionId, 'info', '开始获取房间 token', this.chatroomId)
-    const token = await this.fetchTokenString()
+    const token = await this.fetchRoomTokenString()
     if (!token) {
       throw new Error('未获取到房间连接的 token ')
     }
@@ -54,7 +54,7 @@ export class DaiDaiChatRoomSocket extends BaseNimSocket<import('@yxim/nim-web-sd
     }
   }
 
-  private async fetchTokenString() {
+  private async fetchRoomTokenString() {
     const res = await window.HTTP._get_room_pre_detail({ roomId: this.chatroomId })
     if (res?.data?.randomToken) {
       updateLog(this.sessionId, 'info', '获取房间 token 成功', this.chatroomId)
@@ -62,6 +62,27 @@ export class DaiDaiChatRoomSocket extends BaseNimSocket<import('@yxim/nim-web-sd
       updateLog(this.sessionId, 'error', `获取房间 token 失败，${res?.message}`)
     }
     return res?.data?.randomToken
+  }
+
+  public async fetchUserInfo(targetUid: string) {
+    if (!this.Authorization) {
+      throw new Error('未指定 Authorization')
+    }
+    if (!this.userId) {
+      throw new Error('未指定 userId')
+    }
+    const config = {
+      "uid": targetUid,
+      "myUid": this.userId,
+      "qKey": "DsMain"
+    }
+    const res = await window.HTTP._get_v4_new_god_detailed(config)
+    if (res?.data?.userInfo) {
+      updateLog(this.sessionId, 'info', '获取用户信息成功', res?.data?.userInfo)
+    } else {
+      updateLog(this.sessionId, 'error', `获取用户信息失败，${res?.message}`)
+    }
+    return res?.data
   }
 
   /**

@@ -59,7 +59,7 @@ export class BrowserinternetView {
     this.win.webContents.setAudioMuted(true);
     this.win.webContents.audioMuted = true;
     if (globalEnv.isDev) {
-      // this.win.webContents.openDevTools();
+      this.win.webContents.openDevTools();
     }
 
     // 设置窗口开启处理器 - 使用窗口管理器

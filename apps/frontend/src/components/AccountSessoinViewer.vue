@@ -5,7 +5,7 @@ import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { useVbenModal } from '@vben/common-ui';
 import { Button, message } from 'ant-design-vue';
 import dayjs from 'dayjs';
-import { onMounted } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 
 const { type, defaultUrl } = defineProps({
   type: {
@@ -17,6 +17,8 @@ const { type, defaultUrl } = defineProps({
     default: 'about:blank'
   }
 })
+
+const emit = defineEmits(['browser-opened'])
 
 
 // 日期格式化函数
@@ -48,7 +50,7 @@ const [createModal, createModalApi] = useVbenModal({
 
       const isSuccess = await __API__.createAccountSession({
         ...values,
-        type: 'pdd',
+        type: 'daidai',
         data: processedData
       })
       if (!isSuccess) {
@@ -72,7 +74,7 @@ const [ConfigModal, configModalApi] = useVbenModal({
 
     // 解析房间：按逗号分隔并去除空格
     const rooms = roomText
-      .split(/[,，]/)
+      .split(/[,，\n]/)
       .map((room: string) => room.trim())
       .filter((room: string) => room.length > 0)
 
@@ -105,7 +107,7 @@ const [configForm, configFormApi] = useVbenForm({
       component: 'Textarea',
       componentProps: {
         placeholder: '请输入房间，多个房间用逗号分隔，例如：房间1,房间2,房间3',
-        rows: 5,
+        rows: 25,
       },
       fieldName: 'rooms',
       label: '房间配置',
@@ -167,6 +169,14 @@ const [Grid, gridApi] = useVbenVxeGrid({
         minWidth: 200,
       },
       {
+        field: 'login_status',
+        title: '登录状态',
+        width: 100,
+        slots: {
+          default: 'login_status'
+        }
+      },
+      {
         field: 'created_time',
         title: '创建时间',
         width: 160,
@@ -211,6 +221,7 @@ const [Grid, gridApi] = useVbenVxeGrid({
             currentPage: page.currentPage,
             ...formValues
           })
+
           return result.data
         },
       },
@@ -241,9 +252,11 @@ function openBrowser(row: any) {
   console.log(`🚀 ~ openBrowser ~ row:`, row)
   __API__.reopenBrowser({
     url: defaultUrl,
-    type: 'pdd',
+    type: 'daidai',
     name: row.name
   })
+  // 发送事件给父组件
+  emit('browser-opened', row)
 }
 
 function openConfigModal(row: any) {
@@ -269,8 +282,20 @@ function formatData(data: any) {
   }
 }
 
+// 定时器引用
+const refreshTimer = ref<NodeJS.Timeout | null>(null)
+
 onMounted(() => {
-  gridApi.reload()
+  gridApi.query()
+  refreshTimer.value = setInterval(() => gridApi.query(), 20000)
+})
+
+onUnmounted(() => {
+  // 清理定时器
+  if (refreshTimer.value) {
+    clearInterval(refreshTimer.value)
+    refreshTimer.value = null
+  }
 })
 </script>
 
@@ -280,6 +305,11 @@ onMounted(() => {
       <div style="max-height: 100px; overflow-y: auto; font-size: 12px; white-space: pre-wrap;">
         {{ formatData(row.data) }}
       </div>
+    </template>
+    <template #login_status="{ row }">
+      <span :style="{ color: row.login_status === '已登录' ? '#52c41a' : '#ff4d4f' }">
+        {{ row.login_status || '未登录' }}
+      </span>
     </template>
     <template #action="{ row }">
       <Button class="mr-2" type="primary" @click="openBrowser(row)">

@@ -42,6 +42,9 @@ const __API__ = {
   async updateAccountSession(id: string, data: Record<any, any> = {}) {
     return ipcRenderer.invoke('update-account-session', id, data)
   },
+  async updateAccountSessionLoginStatus(name: string, loginStatus: string) {
+    return ipcRenderer.invoke('update-account-session-login-status', name, loginStatus)
+  },
   async deleteAccountSession(ids = {}) {
     return ipcRenderer.invoke('delete-account-session', ids)
   },
@@ -77,6 +80,15 @@ const __API__ = {
   },
   axiosRequest(config: any) {
     return ipcRenderer.invoke('axios-request', config);
+  },
+  startMirrorTask(options: { name: string; type: string }[] | { name: string; type: string }) {
+    return ipcRenderer.invoke('start-mirror-task', options);
+  },
+  stopMirrorTask(viewIds?: string[]) {
+    return ipcRenderer.invoke('stop-mirror-task', viewIds);
+  },
+  getMirrorTaskStatus() {
+    return ipcRenderer.invoke('get-mirror-task-status');
   }
 }
 window['__API__'] = __API__;

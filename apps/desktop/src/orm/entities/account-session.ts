@@ -17,6 +17,9 @@ export class AccountSessionEntity extends BaseEntity {
   @Column({ type: 'varchar', nullable: true })
   status: string
 
+  @Column({ type: 'varchar', nullable: true, default: '未登录' })
+  login_status: string
+
   @Column({ type: 'json', nullable: true })
   data: Record<any, any>
 

@@ -156,6 +156,37 @@ ipcMain.handle('get-one-account-session-data', async (_ev, name: string) => {
   }
 });
 
+// 更新账号登录状态
+ipcMain.handle('update-account-session-login-status', async (_ev: any, name: string, loginStatus: string) => {
+  try {
+    const accountSession = await AccountSessionEntity.findOne({
+      where: { name: name.toString() }
+    });
+
+    if (!accountSession) {
+      return {
+        code: 404,
+        message: 'Account session not found'
+      };
+    }
+
+    accountSession.login_status = loginStatus;
+    await accountSession.save();
+
+    return {
+      code: 0,
+      data: accountSession,
+      message: 'Account session login status updated successfully'
+    };
+  } catch (error) {
+    console.error('Error updating account session login status:', error);
+    return {
+      code: 500,
+      message: 'Internal server error'
+    };
+  }
+});
+
 // 更新账号会话
 ipcMain.handle('update-account-session', async (_ev: any, id: string, data: Record<any, any>) => {
   try {

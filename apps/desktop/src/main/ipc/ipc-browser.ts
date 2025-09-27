@@ -44,7 +44,8 @@ ipcMain.handle('reopen-browser', (_, options = {}) => {
         preload: globalMainPathParser.resolvePreload('browser.cjs').toString(),
         partition: name ? 'persist:' + md5(String(type) + name) : 'persist:encommerce',
         additionalArguments: [
-          `daidai-name=${name}`
+          `daidai-name=${name}`,
+          `daidai-prelogin=1`,
         ]
       }
     }
