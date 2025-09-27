@@ -15,7 +15,7 @@ export abstract class BaseApplication<WindowType extends BrowserWindow> {
     }
     const KDisableSiteIsolation = '--disable-site-isolation-trials';
     app.commandLine.appendSwitch(KDisableSiteIsolation);
-  
+
     globalEnv.disableSecurityWarnings();
 
     powerSaveBlocker.start('prevent-app-suspension') // 阻止进入休眠
@@ -27,7 +27,7 @@ export abstract class BaseApplication<WindowType extends BrowserWindow> {
     if (process.platform === 'win32') app.setAppUserModelId(app.getName());
   }
 
-  public initAppWindow() {
+  public async initAppWindow() {
     app.whenReady().then(() => this.createMainWindow());
 
     app.on('will-quit', () => {
@@ -56,5 +56,7 @@ export abstract class BaseApplication<WindowType extends BrowserWindow> {
         this.createMainWindow().then();
       }
     });
+
+    return Promise.resolve((resolve => app.whenReady().then(resolve)));
   }
 }

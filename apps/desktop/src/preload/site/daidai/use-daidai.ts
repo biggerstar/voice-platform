@@ -1,13 +1,11 @@
 import { sleep } from "@/utils/time";
 import { ipcRenderer } from "electron";
+import { reportDaiDaiEvent } from "./reportDaiDaiEvent";
 import { DaiDaiChatRoomSocket } from "./socket/DaiDaiChatRoomSocket";
+import { updateLog } from "./utils/updateLog";
 
-function updateStatus(id: string, status: string) {
-  ipcRenderer.invoke('update-account-session', id, { status })
-}
-
-function joinRoom(roomId: number, channelId: string, daidaiName: string, id: string) {
-  const account = 'wp_20396299'
+function joinRoom(roomId: number, channelId: string, daidaiName: string, sessionId: string) {
+  const account = `wp_${getUid()}`
   const authorization = getAuthorization()
   let reconnectCont: number = 0
   const maxReconnect: number = 10
@@ -17,27 +15,33 @@ function joinRoom(roomId: number, channelId: string, daidaiName: string, id: str
   daiDaiChatRoomSocket.setRoomId(roomId)
   daiDaiChatRoomSocket.setAccount(account)
   daiDaiChatRoomSocket.setChannelId(channelId)
+  daiDaiChatRoomSocket.setSessionId(sessionId)
+  updateLog(sessionId, 'info', `开始加入房间`, roomId.toString())
   daiDaiChatRoomSocket.loadSocketNIMScript().then(_ => {
     daiDaiChatRoomSocket.setInitOptions({
       ondisconnect(data) {
         console.info('失去连接: ', this.account, data)
+        updateLog(sessionId, 'error', `与房间失去连接`, roomId.toString())
         daiDaiChatRoomSocket.statusText = '与房间失去连接！'
         if (reconnectCont++ > maxReconnect) {
           daiDaiChatRoomSocket.statusText = '重连次数过多，已主动关闭连接!'
+          updateLog(sessionId, 'error', `重连次数过多，已主动关闭连接!`, roomId.toString())
           return
         }
         setTimeout(() => {
           daiDaiChatRoomSocket.statusText = '重连中......'
+          updateLog(sessionId, 'info', `重连中......`, roomId.toString())
           daiDaiChatRoomSocket.connect().then()
         })
       },
       onconnect(data) {
         console.info('已连接: ', this.account, data)
+        updateLog(sessionId, 'info', `进入房间成功`, roomId.toString())
         daiDaiChatRoomSocket.statusText = '进入房间成功！'
       },
       onmsgs: async (data) => {
         const msgItem = data[0]
-        console.info(msgItem)
+        // console.info(msgItem)
         if (msgItem && msgItem.type === "notification") {
           const attach = msgItem.attach as any
           if (attach && attach.type === "updateMemberInfo") {
@@ -57,7 +61,8 @@ function joinRoom(roomId: number, channelId: string, daidaiName: string, id: str
             //   return   // 开启了免打扰， 忽略
             // }
             // daiDaiChatRoomSocket.lastMsgItem = msgItem
-            console.info(`符合条件---${fromCustom.nick}`, newMemberId, fromCustom)
+            updateLog(sessionId, 'info', `符合条件---${fromCustom.nick}`, newMemberId)
+            reportDaiDaiEvent(sessionId, newMemberId, roomId)
             // console.info(attach)
             // console.info('msgItem', msgItem)
             // console.info(newMemberId)
@@ -94,6 +99,21 @@ async function injectCode() {
   document.head.appendChild(scriptEl)
 }
 
+function takeOverPage() {
+  const rootEl = document.querySelector<HTMLDivElement>('#root')
+  if (!rootEl) return
+  document.body.style.backgroundColor = 'white'
+  document.body.style.backgroundImage = 'none'
+  document.body.style.margin = '0'
+  document.body.style.padding = '0'
+
+  rootEl.innerHTML = '页面已被接管'
+  rootEl.style.color = 'black'
+  rootEl.style.backgroundColor = 'white'
+  rootEl.style.margin = '0'
+  rootEl.style.fontSize = '26px'
+}
+
 export function useDaiDai() {
   console.info('useDaiDai 加载成功')
   const daidaiName = process.argv.find(arg => arg.startsWith('daidai-name='))?.split('=')[1]
@@ -106,16 +126,13 @@ export function useDaiDai() {
     return
   }
 
-  window.addEventListener('DOMContentLoaded', async () => {
-  })
-
   window.addEventListener('load', async () => {
     await sleep(3000)
     await injectCode()
+    takeOverPage()
     const accountSession = await ipcRenderer.invoke('get-one-account-session-data', daidaiName)
-    console.info(`🚀 ~ useDaiDai ~ accountSession:`, accountSession)
+    console.info(`当前运行 Session 信息:`, accountSession.data)
     const roomList = accountSession?.data?.data?.rooms || []
-    console.info(`🚀 ~ useDaiDai ~ roomList:`, roomList)
-    roomList.forEach(roomId => joinRoom(roomId, '1000', daidaiName, accountSession.data.id));
+    roomList.forEach(roomId => joinRoom(roomId, '1000', daidaiName, accountSession.data.name));
   })
 }

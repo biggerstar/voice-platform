@@ -6,22 +6,21 @@ import '../orm/data-source';
 import "./data-parser";
 import "./hotkey";
 import "./ipc";
+import { initializeSchedulers } from "./scheduler";
 import "./windows/app/auth";
 
 async function bootstrap() {
   // 初始化环境相关
   mainWindow.initApplication()
   // 初始化主窗口
-  mainWindow.initAppWindow()
+  await mainWindow.initAppWindow()
 
   if (process.platform !== 'darwin') {
     Menu.setApplicationMenu(null)
   }
-
+  // 初始化定时任务
+  await initializeSchedulers();
   setupTitlebar()
 }
 
 bootstrap().then()
-
-
-

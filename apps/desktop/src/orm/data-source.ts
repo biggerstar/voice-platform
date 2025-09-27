@@ -1,9 +1,11 @@
 import { globalMainPathParser } from "@/global/global-main-path-parser";
-import "reflect-metadata";
+import 'reflect-metadata';
 import { DataSource } from "typeorm";
 import { AccountSessionEntity } from "./entities/account-session";
 import { AppConfigEntity } from "./entities/app-config";
+import { DaidaiLog } from "./entities/daidai-log";
 import { ProductEntity } from "./entities/product";
+import { UserDeduplication } from "./entities/user-deduplication";
 
 const dbName = process.cwd().split('/').splice(2).join('').replaceAll('-', '')
 console.log("🚀 ~ dbName:", globalMainPathParser.resolveDB(dbName))
@@ -22,16 +24,12 @@ export const AppDataSource = new DataSource({
     AppConfigEntity,
     ProductEntity,
     AccountSessionEntity,
+    DaidaiLog,
+    UserDeduplication,
   ], // 注册实体
   // 或者使用通配符匹配所有实体文件
   // entities: ["src/entity/**/*.ts"],
 });
 
-// 初始化数据源
-AppDataSource.initialize()
-  .then(async () => {
-    console.log("SQLite 数据源已初始化！");
-  })
-  .catch((err) => {
-    console.error("数据源初始化时出错", err);
-  });
+// 注意：数据源初始化现在在需要时进行，而不是在导入时自动初始化
+// 这样可以避免在实体元数据未加载完成时就使用数据源的问题

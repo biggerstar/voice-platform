@@ -1,4 +1,5 @@
 import type { NIMChatroomGetInstanceOptions } from '@yxim/nim-web-sdk/dist/types/chatroom/types';
+import { updateLog } from '../utils/updateLog';
 import { BaseNimSocket } from "./BaseSocket";
 
 export class DaiDaiChatRoomSocket extends BaseNimSocket<import('@yxim/nim-web-sdk').Chatroom> {
@@ -24,10 +25,10 @@ export class DaiDaiChatRoomSocket extends BaseNimSocket<import('@yxim/nim-web-sd
     if (!this.chatroomId) {
       throw new Error('没有设置 roomid')
     }
+    updateLog(this.sessionId, 'info', '开始获取房间 token', this.chatroomId)
     const token = await this.fetchTokenString()
-    console.info(`🚀 ~ DaiDaiChatRoomSocket ~ _connect ~ token:`, token)
     if (!token) {
-      new Error('未获取到房间连接的 token ')
+      throw new Error('未获取到房间连接的 token ')
     }
     const options = <Partial<NIMChatroomGetInstanceOptions>>{
       // debug: true,
@@ -44,7 +45,7 @@ export class DaiDaiChatRoomSocket extends BaseNimSocket<import('@yxim/nim-web-sd
       account: this.account,
       needReconnect: true,
       quickReconnect: true,
-      reconnectionAttempts: 20,
+      reconnectionAttempts: 300,
     }
     Object.assign(this.initOptions, options)
     if (this.window?.Chatroom) {
@@ -54,7 +55,13 @@ export class DaiDaiChatRoomSocket extends BaseNimSocket<import('@yxim/nim-web-sd
   }
 
   private async fetchTokenString() {
-    return window.HTTP._get_room_pre_detail({ roomId: this.chatroomId }).then(res => res?.data?.randomToken)
+    const res = await window.HTTP._get_room_pre_detail({ roomId: this.chatroomId })
+    if (res?.data?.randomToken) {
+      updateLog(this.sessionId, 'info', '获取房间 token 成功', this.chatroomId)
+    } else {
+      updateLog(this.sessionId, 'error', `获取房间 token 失败，${res?.message}`)
+    }
+    return res?.data?.randomToken
   }
 
   /**

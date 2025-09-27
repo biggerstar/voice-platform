@@ -45,6 +45,15 @@ const __API__ = {
   async deleteAccountSession(ids = {}) {
     return ipcRenderer.invoke('delete-account-session', ids)
   },
+  async getDaidaiLogs(options = {}) {
+    return ipcRenderer.invoke('get-daidai-logs', options)
+  },
+  async updateDaidaiLog(id: string, status: string, message?: string) {
+    return ipcRenderer.invoke('update-daidai-log', id, status, message)
+  },
+  async deleteDaidaiLogs(ids = []) {
+    return ipcRenderer.invoke('delete-daidai-logs', ids)
+  },
   showWindow() {
     return ipcRenderer.invoke('show-window');
   },

@@ -16,9 +16,14 @@ export class BaseNimSocket<Instance> {
   public userId?: string
   public Authorization?: string
   protected _isDestroyed?: boolean
+  public sessionId?: string
 
   constructor() {
     this.resetStatus()
+  }
+
+  public setSessionId(id: string) {
+    this.sessionId = id
   }
 
   public setAuthorization(Authorization: string) {
