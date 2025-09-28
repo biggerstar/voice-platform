@@ -11,6 +11,9 @@ export class DaidaiLog {
   @Column({ nullable: true, type: 'varchar', length: 255 })
   roomId: string;
 
+  @Column({ nullable: true, type: 'varchar', length: 255 })
+  chatroomName: string;
+
   @Column({ nullable: true, type: 'varchar', length: 100 })
   status: string;
 

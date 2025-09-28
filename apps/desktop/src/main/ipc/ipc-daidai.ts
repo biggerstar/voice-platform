@@ -89,8 +89,8 @@ async function createSingleMirrorTaskView(options: { name: string; type: string;
 }
 
 // 添加日志
-ipcMain.handle('update-daidai-log', async (_, id: string, status: string, message?: string, roomId?: string) => {
-  console.info(`[update-daidai-log]`, 'id=', id, ' status=', status, ' message=', message, ' roomId', roomId)
+ipcMain.handle('update-daidai-log', async (_, id: string, status: string, message?: string, roomId?: string, chatroomName?: string) => {
+  console.info(`[update-daidai-log]`, 'id=', id, ' status=', status, ' message=', message, ' roomId', roomId, ' chatroomName=', chatroomName)
   try {
     let log: DaidaiLog;
 
@@ -107,6 +107,7 @@ ipcMain.handle('update-daidai-log', async (_, id: string, status: string, messag
         // 如果存在，更新现有记录的 message 和 status
         existingLog.status = status;
         existingLog.message = message || '';
+        existingLog.chatroomName = chatroomName || existingLog.chatroomName;
         existingLog.updatedAt = new Date();
         log = existingLog;
       } else {
@@ -116,13 +117,11 @@ ipcMain.handle('update-daidai-log', async (_, id: string, status: string, messag
         log.status = status;
         log.message = message || '';
         log.roomId = roomId;
+        log.chatroomName = chatroomName || '';
       }
     } else {
       // 如果没有 roomId，直接创建新记录
-      log = new DaidaiLog();
-      log.accountSessionId = id;
-      log.status = status;
-      log.message = message || '';
+      return { success: false, data: null };
     }
 
     const result = await daidaiLogRepository.save(log);
@@ -358,6 +357,47 @@ ipcMain.handle('get-mirror-task-status', () => {
     };
   } catch (error) {
     console.error('❌ [get-mirror-task-status] 获取镜像任务状态失败:', error);
+    return { success: false, error: error.message };
+  }
+})
+
+// 重连房间
+ipcMain.handle('reconnect-room', async (_, options: {
+  roomId: string;
+  accountSessionId: string;
+  chatroomName?: string;
+}) => {
+  try {
+    const { roomId, accountSessionId, chatroomName } = options;
+    console.log('🔄 [reconnect-room] 开始重连房间:', { roomId, accountSessionId, chatroomName });
+
+    // 根据 accountSessionId 找到对应的镜像任务窗口
+    const viewId = `daidai_${accountSessionId}`;
+    const targetView = mirrorTaskViews.get(viewId);
+
+    if (!targetView) {
+      console.error(`❌ [reconnect-room] 未找到对应的镜像任务窗口: ${viewId}`);
+      return {
+        success: false,
+        error: `未找到对应的镜像任务窗口: ${viewId}`
+      };
+    }
+
+    // 向目标窗口发送重连事件
+    targetView.webContents.send('reconnect-room-request', {
+      roomId,
+      accountSessionId,
+      chatroomName
+    });
+
+    console.log(`✅ [reconnect-room] 重连请求已发送到窗口: ${viewId}`);
+    return {
+      success: true,
+      message: `重连请求已发送到窗口: ${viewId}`
+    };
+
+  } catch (error) {
+    console.error('❌ [reconnect-room] 重连房间失败:', error);
     return { success: false, error: error.message };
   }
 })

@@ -237,6 +237,23 @@ async function startWork() {
   }
 }
 
+// 处理重连按钮点击
+async function handleReconnect(row: any) {
+  try {
+    console.log('重连房间:', row);
+    // 调用重连 API
+    await __API__.reconnectRoom({
+      roomId: row.roomId,
+      accountSessionId: row.accountSessionId,
+      chatroomName: row.chatroomName
+    });
+    message.success('重连请求已发送');
+  } catch (error) {
+    console.error('重连失败:', error);
+    message.error('重连失败');
+  }
+}
+
 // 处理子组件的浏览器打开事件
 function handleBrowserOpened(row: any) {
   console.log('浏览器已打开:', row);
@@ -352,6 +369,16 @@ onUnmounted(() => {
     <Grid :table-title="'带带日志监控'">
       <template #remark="{ row }">
         <div>{{ row.message || '-' }}</div>
+      </template>
+      <template #action="{ row }">
+        <Button 
+          v-if="row.status === 'error'" 
+          type="primary" 
+          size="small" 
+          @click="handleReconnect(row)"
+        >
+          重连
+        </Button>
       </template>
       <template #toolbar-tools>
         <!-- <Button class="mr-2" type="primary" danger @click="deleteRows()">

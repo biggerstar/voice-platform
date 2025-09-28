@@ -56,11 +56,11 @@ export function useGridFormSchema(): VbenFormSchema[] {
 
 export function useColumns(): VxeTableGridOptions['columns'] {
   return [
-    {
-      type: 'checkbox',
-      title: '',
-      width: 50,
-    },
+    // {
+    //   type: 'checkbox',
+    //   title: '',
+    //   width: 50,
+    // },
     {
       field: 'id',
       title: 'ID',
@@ -76,8 +76,15 @@ export function useColumns(): VxeTableGridOptions['columns'] {
     {
       field: 'roomId',
       title: '房间ID',
-      width: 120,
+      width: 150,
       sortable: true,
+    },
+    {
+      field: 'chatroomName',
+      title: '房间名称',
+      width: 280,
+      sortable: true,
+      showOverflow: 'tooltip',
     },
     {
       field: 'message',
@@ -86,6 +93,20 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       showOverflow: 'tooltip',
       slots: {
         default: 'remark'
+      },
+    },
+    {
+      field: 'status',
+      title: '状态',
+      width: 100,
+      sortable: true,
+    },
+    {
+      title: '操作',
+      width: 120,
+      fixed: 'right',
+      slots: {
+        default: 'action'
       },
     },
     // {

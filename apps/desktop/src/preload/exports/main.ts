@@ -99,6 +99,13 @@ const __API__ = {
   },
   getMirrorTaskStatus() {
     return ipcRenderer.invoke('get-mirror-task-status');
+  },
+  reconnectRoom(options: {
+    roomId: string;
+    accountSessionId: string;
+    chatroomName?: string;
+  }) {
+    return ipcRenderer.invoke('reconnect-room', options);
   }
 }
 window['__API__'] = __API__;

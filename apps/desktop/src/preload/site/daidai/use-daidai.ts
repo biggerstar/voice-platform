@@ -3,14 +3,46 @@ import { ipcRenderer } from "electron";
 import { reportDaiDaiEvent } from "./reportDaiDaiEvent";
 import { DaiDaiChatRoomSocket } from "./socket/DaiDaiChatRoomSocket";
 import { updateLog } from "./utils/updateLog";
-let lastDaiDaiChatRoomSocket: DaiDaiChatRoomSocket | null = null
-function joinRoom(roomId: number, channelId: string, daidaiName: string, sessionId: string) {
+
+// 创建 Map 存储每个房间的 socket 实例，key 为 roomId_sessionId
+const socketMap = new Map<string, DaiDaiChatRoomSocket>();
+
+function joinRoom(roomId: number, channelId: string, sessionId: string) {
   const account = `wp_${getUid()}`
   const authorization = getAuthorization()
   let reconnectCont: number = 0
   const maxReconnect: number = 10
-  const daiDaiChatRoomSocket = new DaiDaiChatRoomSocket()
-  lastDaiDaiChatRoomSocket = daiDaiChatRoomSocket
+
+  // 生成唯一的 socket key
+  const socketKey = `${roomId}_${sessionId}`;
+
+  // 检查是否已存在 socket 实例
+  let daiDaiChatRoomSocket = socketMap.get(socketKey);
+
+  if (daiDaiChatRoomSocket) {
+    // 复用现有的 socket
+    console.log(`🔄 复用现有 socket 实例: ${socketKey}`);
+    updateLog(sessionId, 'info', `复用现有连接，重新进房中...`, roomId.toString());
+
+    // 重新连接
+    setTimeout(() => {
+      daiDaiChatRoomSocket!.connect().then(() => {
+        console.log(`✅ 复用 socket 重连成功: ${socketKey}`);
+      }).catch((error) => {
+        console.error(`❌ 复用 socket 重连失败: ${socketKey}`, error);
+        updateLog(sessionId, 'error', `复用连接失败: ${error.message}`, roomId.toString());
+      });
+    }, 500);
+    return;
+  }
+
+  // 创建新的 socket 实例
+  console.log(`🆕 创建新的 socket 实例: ${socketKey}`);
+  daiDaiChatRoomSocket = new DaiDaiChatRoomSocket();
+
+  // 存储到 Map 中
+  socketMap.set(socketKey, daiDaiChatRoomSocket);
+
   daiDaiChatRoomSocket.createSocketFrame()
   daiDaiChatRoomSocket.setAuthorization(authorization)
   daiDaiChatRoomSocket.setRoomId(roomId)
@@ -19,20 +51,29 @@ function joinRoom(roomId: number, channelId: string, daidaiName: string, session
   daiDaiChatRoomSocket.setSessionId(sessionId)
   updateLog(sessionId, 'info', `排队进房中...`, roomId.toString())
   daiDaiChatRoomSocket.loadSocketNIMScript().then(_ => {
-    daiDaiChatRoomSocket.setInitOptions({
+    daiDaiChatRoomSocket!.setInitOptions({
       ondisconnect(data) {
-        updateLog(sessionId, 'error', `与房间失去连接(正在排队重连)`, roomId.toString())
+        if (data.code === 20013) {
+          updateLog(sessionId, 'info', `同账号派单厅只允许加入一个!!!`, roomId.toString())
+          return
+        }
+        updateLog(sessionId, 'error', `与房间失去连接(原因: ${data['reason'] || data.message})(正在排队重连)`, roomId.toString())
         if (reconnectCont++ > maxReconnect) {
           updateLog(sessionId, 'error', `重连次数过多，已主动关闭连接!`, roomId.toString())
+          // 从 Map 中移除失败的 socket
+          socketMap.delete(socketKey);
           return
         }
         setTimeout(() => {
-          daiDaiChatRoomSocket.connect().then()
+          daiDaiChatRoomSocket!.connect().then()
         })
       },
-      onconnect(data) {
+      onconnect(data: any) {
         console.info('已连接: ', this.account, data)
-        updateLog(sessionId, 'info', `进入房间成功`, roomId.toString())
+        const chatroomName = data.chatroom?.name
+        updateLog(sessionId, 'info', `进入房间成功`, roomId.toString(), chatroomName)
+        // 重置重连计数器
+        reconnectCont = 0;
       },
       onmsgs: async (data) => {
         const msgItem = data[0]
@@ -47,7 +88,7 @@ function joinRoom(roomId: number, channelId: string, daidaiName: string, session
             if (fromCustom.client === 'backend') return   // 系统消息更新，退出
             if (fromCustom.roleId !== 0) return   // 有身份,不是普通用户 ，退出
             const newMemberId: string = attach.from.replace('wp_', '')
-            if (daiDaiChatRoomSocket.account === newMemberId) return  // 如果ID是自己的，则直接忽略
+            if (daiDaiChatRoomSocket!.account === newMemberId) return  // 如果ID是自己的，则直接忽略
             const userInfo = {
               userId: newMemberId,
               nickName: fromCustom.nick,
@@ -56,13 +97,13 @@ function joinRoom(roomId: number, channelId: string, daidaiName: string, session
               mengxin: fromCustom.mengxin === 1,
               wealthLevelName: fromCustom.wealthLevelName || "无"
             }
-            updateLog(sessionId, 'info', `符合条件---${fromCustom.nick}`, newMemberId)
-            reportDaiDaiEvent(daiDaiChatRoomSocket, sessionId, newMemberId, roomId, userInfo)
+            updateLog(sessionId, 'info', `符合条件---${fromCustom.nick}(${newMemberId})`, roomId.toString())
+            reportDaiDaiEvent(daiDaiChatRoomSocket!, sessionId, newMemberId, roomId, userInfo)
           }
         }
       }
     })
-    setTimeout(() => daiDaiChatRoomSocket.connect().then(), 500)
+    setTimeout(() => daiDaiChatRoomSocket!.connect().then(), 500)
   })
 }
 
@@ -152,6 +193,20 @@ export function useDaiDai() {
   checkLoginStatusAndUpdate(daidaiName)
   setInterval(() => checkLoginStatusAndUpdate(daidaiName), 10000)
 
+  // 监听重连房间事件
+  ipcRenderer.on('reconnect-room-request', (event, data: {
+    roomId: string;
+    accountSessionId: string;
+    chatroomName?: string;
+  }) => {
+    console.log('🔄 [reconnect-room-request] 收到重连请求:', data);
+    const { roomId, accountSessionId } = data;
+
+    // 重新加入房间（会自动复用现有 socket）
+    joinRoom(parseInt(roomId), '1000', accountSessionId);
+    console.log(`✅ [reconnect-room-request] 重连房间 ${roomId} 完成`);
+  });
+
   // 预登录， 退出
   if (daidaiPrelogin) return
 
@@ -162,7 +217,8 @@ export function useDaiDai() {
     const accountSession = await ipcRenderer.invoke('get-one-account-session-data', daidaiName)
     console.info(`当前运行 Session 信息:`, accountSession.data)
     const roomList = accountSession?.data?.data?.rooms || []
-    // const roomList = [453936449]
-    roomList.forEach(roomId => joinRoom(roomId, '1000', daidaiName, accountSession.data.name));
+    // const roomList = [185173982]  // 派单厅
+    // const roomList = [11320152375, 2703493081, 438326816]
+    roomList.forEach(roomId => joinRoom(roomId, '1000', accountSession.data.name));
   })
 }

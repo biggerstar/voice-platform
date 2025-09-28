@@ -45,12 +45,16 @@ export class DaiDaiChatRoomSocket extends BaseNimSocket<import('@yxim/nim-web-sd
       account: this.account,
       needReconnect: true,
       quickReconnect: true,
-      reconnectionAttempts: 300,
+      reconnectionAttempts: 30,
+      privateConf: {
+        isDataReportEnable: false,
+        loginSDKTypeParamCompat: true
+      }
     }
     Object.assign(this.initOptions, options)
     if (this.window?.Chatroom) {
       // @ts-ignore
-      this.instance = new this.window['Chatroom'](this.initOptions)
+      this.instance = this.window['Chatroom'].getInstance(this.initOptions)
     }
   }
 

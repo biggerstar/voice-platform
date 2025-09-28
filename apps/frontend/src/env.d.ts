@@ -89,6 +89,16 @@ declare global {
       message?: string
       error?: string
     }>
+    // 重连房间接口
+    reconnectRoom(options: {
+      roomId: string
+      accountSessionId: string
+      chatroomName?: string
+    }): Promise<{
+      success: boolean
+      message?: string
+      error?: string
+    }>
   }
 
   declare const __TABLE_API__: {
