@@ -64,6 +64,9 @@ export class LogCleanupScheduler {
       try {
         await AppDataSource.initialize();
         console.log('数据源初始化完成');
+        
+        // 软件启动时清除所有日志数据
+        await this.clearAllLogsOnStartup();
       } catch (error) {
         console.error('数据源初始化失败:', error);
         return;
@@ -98,6 +101,19 @@ export class LogCleanupScheduler {
   async restartScheduledCleanup(): Promise<void> {
     this.stopScheduledCleanup();
     await this.startScheduledCleanup();
+  }
+
+  /**
+   * 软件启动时清除所有日志数据
+   */
+  private async clearAllLogsOnStartup(): Promise<void> {
+    try {
+      const daidaiLogRepository = AppDataSource.getRepository(DaidaiLog);
+      await daidaiLogRepository.clear();
+      console.log('软件启动时已清除所有带带日志数据');
+    } catch (error) {
+      console.error('清除启动日志失败:', error);
+    }
   }
 }
 

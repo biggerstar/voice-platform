@@ -17,20 +17,16 @@ function joinRoom(roomId: number, channelId: string, daidaiName: string, session
   daiDaiChatRoomSocket.setAccount(account)
   daiDaiChatRoomSocket.setChannelId(channelId)
   daiDaiChatRoomSocket.setSessionId(sessionId)
-  updateLog(sessionId, 'info', `开始加入房间`, roomId.toString())
+  updateLog(sessionId, 'info', `排队进房中...`, roomId.toString())
   daiDaiChatRoomSocket.loadSocketNIMScript().then(_ => {
     daiDaiChatRoomSocket.setInitOptions({
       ondisconnect(data) {
-        console.info('失去连接: ', this.account, data)
-        updateLog(sessionId, 'error', `与房间失去连接`, roomId.toString())
-        daiDaiChatRoomSocket.statusText = '与房间失去连接！'
+        updateLog(sessionId, 'error', `与房间失去连接(正在排队重连)`, roomId.toString())
         if (reconnectCont++ > maxReconnect) {
-          daiDaiChatRoomSocket.statusText = '重连次数过多，已主动关闭连接!'
           updateLog(sessionId, 'error', `重连次数过多，已主动关闭连接!`, roomId.toString())
           return
         }
         setTimeout(() => {
-          daiDaiChatRoomSocket.statusText = '重连中......'
           updateLog(sessionId, 'info', `重连中......`, roomId.toString())
           daiDaiChatRoomSocket.connect().then()
         })
@@ -38,7 +34,6 @@ function joinRoom(roomId: number, channelId: string, daidaiName: string, session
       onconnect(data) {
         console.info('已连接: ', this.account, data)
         updateLog(sessionId, 'info', `进入房间成功`, roomId.toString())
-        daiDaiChatRoomSocket.statusText = '进入房间成功！'
       },
       onmsgs: async (data) => {
         const msgItem = data[0]

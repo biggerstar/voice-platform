@@ -1,5 +1,35 @@
-import { CustomTitlebar } from 'custom-electron-titlebar'
+import { CustomTitlebar } from 'custom-electron-titlebar';
 
+// 日志相关类型定义
+interface DaidaiLog {
+  id: string;
+  accountSessionId: string;
+  roomId: string;
+  status: string;
+  message: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface DaidaiLogQueryOptions {
+  accountSessionId?: string;
+  skip?: number;
+  take?: number;
+  where?: Record<string, any>;
+  pageSize?: number;
+  currentPage?: number;
+}
+
+interface DaidaiLogResponse {
+  success: boolean;
+  data?: {
+    items: DaidaiLog[];
+    total: number;
+    pageSize: number;
+    current: number;
+  };
+  error?: string;
+}
 
 declare global {
   declare interface Window {
@@ -29,6 +59,11 @@ declare global {
     createAccountSession(data: Record<any, any>): Promise<any>
     updateAccountSession(id: string, data: Record<any, any>): Promise<any>
     deleteAccountSession(ids: string[]): Promise<void>
+    // 日志相关接口
+    getDaidaiLogs(options?: DaidaiLogQueryOptions): Promise<DaidaiLogResponse>
+    updateDaidaiLog(id: string, status: string, message?: string, roomId?: string): Promise<{ success: boolean; data?: DaidaiLog; error?: string }>
+    deleteDaidaiLogs(ids?: string[]): Promise<{ success: boolean; error?: string }>
+    clearAllDaidaiLogs(): Promise<{ success: boolean; error?: string }>
     // 镜像任务相关接口
     startMirrorTask(options: { name: string; type: string }[] | { name: string; type: string }): Promise<{
       success: boolean

@@ -62,114 +62,59 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       width: 50,
     },
     {
-      field: 'index',
-      title: '序号',
-      width: 60,
-    },
-    {
-      field: 'keyword',
-      title: '搜索词',
-      width: 110,
-    },
-    {
-      field: 'detailUrl',
-      title: '来源 URL',
-      width: 160,
+      field: 'id',
+      title: 'ID',
+      width: 80,
       visible: false,
     },
     {
-      field: 'title',
-      title: '标题',
-      minWidth: 260,
+      field: 'accountSessionId',
+      title: '所属账号',
+      width: 180,
       sortable: true,
-      slots: {
-        default: 'display_id'
-      },
     },
     {
-      field: 'color',
-      title: '颜色',
-      minWidth: 260,
-      slots: {
-        default: 'color'
-      },
-      exportMethod({ row }) {
-        const colorList = row.data.skus.map((sku: any) => sku?.specs?.[0]?.spec_value)
-        return [...new Set(colorList)].join('、')
-      }
+      field: 'roomId',
+      title: '房间ID',
+      width: 120,
+      sortable: true,
     },
     {
-      field: 'size',
-      title: '尺码',
-      minWidth: 260,
-      slots: {
-        default: 'size'
-      },
-      exportMethod({ row }) {
-        const sizeList = row.data.skus.map((sku: any) => sku?.specs?.[1]?.spec_value)
-        return [...new Set(sizeList)].join(' ')
-      }
-    },
-    {
-      field: 'presale',
-      title: '是否预售',
-      width: 110,
-      slots: {
-        default: 'presale'
-      },
-      filters: [
-        { label: '过滤预售', value: true }
-      ],
-      filterMethod(options) {
-        const { row, option } = options
-        if (option.label === '过滤预售' && row.title.includes('预售')) {
-          return true
-        }
-        return false
-      }
-    },
-    {
-      field: 'remark',
-      title: '备注',
-      minWidth: 220,
+      field: 'message',
+      title: '监控状态',
+      minWidth: 300,
+      showOverflow: 'tooltip',
       slots: {
         default: 'remark'
       },
-      filters: [
-        { label: '过滤无货', value: true },
-        { label: '过滤快要抢光', value: true },
-        { label: '过滤快要卖完', value: true },
-      ],
-      filterMethod(options) {
-        const { row, option } = options
-        const skuListString = JSON.stringify(row.data.skus)
-        if (option.label === '过滤无货' && skuListString.includes(`"quantity":0`)) {
-          return true
-        }
-        if (option.label === '过滤快要抢光' && skuListString.includes('快要抢光')) {
-          return true
-        }
-        if (option.label === '过滤快要卖完' && skuListString.includes('快要卖完')) {
-          return true
-        }
-        return false
-      }
     },
-    {
-      field: 'created_time',
-      title: '创建时间',
-      width: 120,
-      visible: false,
-      sortable: true,
-      formatter: ({ cellValue }) => formatTimeField(cellValue),
-    },
-    {
-      field: 'updated_time',
-      title: '更新时间',
-      visible: false,
-      sortable: true,
-      width: 120,
-      formatter: ({ cellValue }) => formatTimeField(cellValue),
-    },
+    // {
+    //   field: 'createdAt',
+    //   title: '创建时间',
+    //   width: 160,
+    //   sortable: true,
+    //   formatter: ({ cellValue }) => {
+    //     if (!cellValue) return '';
+    //     try {
+    //       return dayjs(cellValue).format('YYYY-MM-DD HH:mm:ss');
+    //     } catch (error) {
+    //       return cellValue || '';
+    //     }
+    //   },
+    // },
+    // {
+    //   field: 'updatedAt',
+    //   title: '更新时间',
+    //   width: 160,
+    //   sortable: true,
+    //   formatter: ({ cellValue }) => {
+    //     if (!cellValue) return '';
+    //     try {
+    //       return dayjs(cellValue).format('YYYY-MM-DD HH:mm:ss');
+    //     } catch (error) {
+    //       return cellValue || '';
+    //     }
+    //   },
+    // },
   ];
 }

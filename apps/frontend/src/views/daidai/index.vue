@@ -58,45 +58,30 @@ const [Grid, gridApi] = useVbenVxeGrid({
     showOverflow: true,
     virtualYConfig: {
       enabled: true,
-      gt: 0
+      gt: 20
+    },
+    scrollYConfig: {
+      enabled: true
     },
     pagerConfig: {
-      pageSize: 2000,
-      pageSizes: [50, 200, 500, 2000, 5000]
+      enabled: false
     },
     checkboxConfig: {
       range: true
     },
-    exportConfig: {
-      types: ['csv', 'txt'],
-      includeFields: [
-        'index',
-        'keyword',
-        'detailUrl',
-        'title',
-        'color',
-        'size',
-        'presale',
-        'remark',
-      ],
-      columnFilterMethod({ column }) {
-        if (column.type === 'checkbox') return false
-        return true
-      }
-    },
     proxyConfig: {
+      enabled: true,
+      autoLoad: true,
       ajax: {
-        query: async ({ page }, formValues) => {
-          const result = await __API__.getPruductList({
+        query: async () => {
+          const result = await __API__.getDaidaiLogs({
             where: { type: 'daidai' },
-            pageSize: page.pageSize,
-            currentPage: page.currentPage,
-            ...formValues
-          })
-          console.log(`🚀 ~ result.data:`, result.data)
-          return result.data
-        },
-      },
+            pageSize: 10000,
+            currentPage: 1
+          });
+          return result?.data?.items || [];
+        }
+      }
     },
     toolbarConfig: {
       custom: true,
@@ -108,50 +93,19 @@ const [Grid, gridApi] = useVbenVxeGrid({
   } as VxeTableGridOptions<CompanyUserApi.User>,
 });
 
-function parseColor(row: any) {
-  const colorList = row.data.skus.map((sku: any) => sku?.specs?.[0]?.spec_value)
-  row.color = [...new Set(colorList)].join('\n')
-  return row.color
-}
-
-function parseSize(row: any) {
-  const sizeList = row.data.skus.map((sku: any) => sku?.specs?.[1]?.spec_value)
-  row.size = [...new Set(sizeList)].join('\n')
-  return row.size
-}
-
-function parseRemark(row: any): string {
-  const causeList: string[] = []
-  const notQuantityList: string[] = []
-  row.data.skus.map((sku: any) => {
-    if (sku.sideCarLabels) {
-      const sideCarLabelList = sku.sideCarLabels.filter((side: any) => side.text).map((side: any) => side.text)
-      const cause = `${sku?.specs?.[0]?.spec_value}-${sku?.specs?.[1]?.spec_value} - ${sideCarLabelList.join(' ')}`
-      causeList.push(cause)
-    }
-    if (sku.quantity === 0) {
-      const cause = `${sku?.specs?.[0]?.spec_value}-${sku?.specs?.[1]?.spec_value} - 无货`
-      notQuantityList.push(cause)
-    }
-  })
-  return [...notQuantityList, ...causeList].join('\n')
-}
-
-function parsePresale(row: any) {
-  return row.title.includes('预售') ? '是' : ''
-}
-
-function deleteRows() {
+async function deleteRows() {
   const grid = gridApi.grid
   const selecterRecord = grid.getCheckboxRecords()
   const deleteIds = selecterRecord.map(item => item.id)
-  __API__.deleteProduct(deleteIds)
-  gridApi.reload()
-}
 
-function parseDetailUrl(row: any) {
-  __API__.showWindow()
-  __API__.loadURL(row.detailUrl)
+  try {
+    await __API__.deleteDaidaiLogs(deleteIds)
+
+    // 删除成功后重新加载数据
+    await gridApi.reload()
+  } catch (error) {
+    console.error('删除数据失败:', error);
+  }
 }
 
 // 检查监控状态
@@ -292,20 +246,67 @@ function handleBrowserOpened(row: any) {
 
 
 let curTotal = -1
+let lastDataHash = ''
 let loopUpdateTimer: any
 let statusCheckTimer: any
 let loginStatusCheckTimer: any
+
+// 简单的数据diff算法 - 生成数据哈希用于比较
+function generateDataHash(data: any[]): string {
+  if (!data || !Array.isArray(data)) return '';
+
+  // 提取关键字段生成哈希字符串
+  const keyData = data.map(item => ({
+    id: item.id,
+    status: item.status,
+    message: item.message,
+    updatedAt: item.updatedAt
+  }));
+
+  return JSON.stringify(keyData);
+}
+
+// 检查数据是否发生变化
+function hasDataChanged(newData: any[], newTotal: number): boolean {
+  const newHash = generateDataHash(newData);
+  const totalChanged = curTotal !== newTotal;
+  const contentChanged = lastDataHash !== newHash;
+
+  if (totalChanged || contentChanged) {
+    lastDataHash = newHash;
+    curTotal = newTotal;
+    return true;
+  }
+
+  return false;
+}
 
 onMounted(async () => {
   // 检查初始监控状态
   await checkMonitorStatus();
 
-  // 定期检查产品列表更新
+
+
+  // 定期检查日志列表更新
   loopUpdateTimer = setInterval(async () => {
-    const productList = await __API__.getPruductList({ where: { type: 'daidai' } })
-    if (curTotal !== productList.data.total) {
-      if (curTotal >= 0) gridApi.reload()
-      curTotal = productList.data.total
+    try {
+      const logList = await __API__.getDaidaiLogs({
+        where: { type: 'daidai' },
+        pageSize: 10000,
+        currentPage: 1
+      });
+
+      if (logList.data) {
+        const newData = logList.data.items || [];
+        const newTotal = logList.data.total || 0;
+        // 使用diff算法检查数据是否真正发生变化
+        if (hasDataChanged(newData, newTotal)) {
+          // 直接设置新数据到表格，避免闪烁
+          await gridApi.grid.loadData(newData);
+        }
+      }
+    } catch (error) {
+      console.error('更新数据失败:', error);
     }
   }, 500)
 
@@ -318,9 +319,7 @@ onMounted(async () => {
 
   // 立即执行一次登录状态检查
   try {
-    console.log('🚀 立即执行登录状态检查')
     const sessionResult = await __API__.getAccountSessionList({ where: { type: 'daidai' } });
-    console.log('📋 获取账号会话列表结果:', sessionResult)
     if (sessionResult.code === 0 && sessionResult.data?.items) {
       checkAndNotifyLoginStatus(sessionResult.data.items);
     }
@@ -331,7 +330,6 @@ onMounted(async () => {
   // 定期检查登录状态并发送通知（每10秒检查一次）
   loginStatusCheckTimer = setInterval(async () => {
     try {
-      console.log('⏰ 定时检查登录状态')
       const sessionResult = await __API__.getAccountSessionList({ where: { type: 'daidai' } });
       if (sessionResult.code === 0 && sessionResult.data?.items) {
         checkAndNotifyLoginStatus(sessionResult.data.items);
@@ -351,26 +349,14 @@ onUnmounted(() => {
 </script>
 <template>
   <Page class="h-[98%]">
-    <Grid :table-title="'带带监控'">
-      <template #display_id="{ row }">
-        <Button type="link" @click="() => parseDetailUrl(row)">{{ row['title'] }}</Button>
-      </template>
-      <template #color="{ row }">
-        <div>{{ parseColor(row) }}</div>
-      </template>
-      <template #size="{ row }">
-        <div>{{ parseSize(row) }}</div>
-      </template>
-      <template #presale="{ row }">
-        <div>{{ parsePresale(row) }}</div>
-      </template>
+    <Grid :table-title="'带带日志监控'">
       <template #remark="{ row }">
-        <div>{{ parseRemark(row) }}</div>
+        <div>{{ row.message || '-' }}</div>
       </template>
       <template #toolbar-tools>
-        <Button class="mr-2" type="primary" danger @click="deleteRows()">
+        <!-- <Button class="mr-2" type="primary" danger @click="deleteRows()">
           删除
-        </Button>
+        </Button> -->
         <Button class="mr-2" type="primary" @click="() => modalApi.open()">
           管理账号
         </Button>

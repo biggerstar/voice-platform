@@ -48,14 +48,24 @@ const __API__ = {
   async deleteAccountSession(ids = {}) {
     return ipcRenderer.invoke('delete-account-session', ids)
   },
-  async getDaidaiLogs(options = {}) {
+  async getDaidaiLogs(options: {
+    accountSessionId?: string;
+    skip?: number;
+    take?: number;
+    where?: Record<string, any>;
+    pageSize?: number;
+    currentPage?: number;
+  } = {}) {
     return ipcRenderer.invoke('get-daidai-logs', options)
   },
-  async updateDaidaiLog(id: string, status: string, message?: string) {
-    return ipcRenderer.invoke('update-daidai-log', id, status, message)
+  async updateDaidaiLog(id: string, status: string, message?: string, roomId?: string) {
+    return ipcRenderer.invoke('update-daidai-log', id, status, message, roomId)
   },
-  async deleteDaidaiLogs(ids = []) {
+  async deleteDaidaiLogs(ids: string[] = []) {
     return ipcRenderer.invoke('delete-daidai-logs', ids)
+  },
+  async clearAllDaidaiLogs() {
+    return ipcRenderer.invoke('clear-all-daidai-logs')
   },
   showWindow() {
     return ipcRenderer.invoke('show-window');

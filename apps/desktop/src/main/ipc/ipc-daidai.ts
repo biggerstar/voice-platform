@@ -60,29 +60,15 @@ async function createSingleMirrorTaskView(options: { name: string; type: string;
     // 设置窗口大小
     const viewWidth = 600;
     const viewHeight = 200;
-
-    if (globalEnv.isDev) {
-      // 开发模式下显示窗口用于调试，多个窗口错开显示
-      const existingCount = mirrorTaskViews.size;
-      mirrorTaskView.setBounds({
-        x: 100 + (existingCount * 50),
-        y: 100 + (existingCount * 50),
-        width: viewWidth,
-        height: viewHeight
-      });
-      mirrorTaskView.setVisible(true);
-    } else {
-      // 生产模式下隐藏窗口到屏幕外面
-      const offscreenX = screenWidth + 100; // 移动到屏幕右侧外面
-      const offscreenY = 0;
-      mirrorTaskView.setBounds({
-        x: offscreenX,
-        y: offscreenY,
-        width: viewWidth,
-        height: viewHeight
-      });
-      mirrorTaskView.setVisible(false);
-    }
+    const offscreenX = screenWidth + 100; // 移动到屏幕右侧外面
+    const offscreenY = 0;
+    mirrorTaskView.setBounds({
+      x: offscreenX,
+      y: offscreenY,
+      width: viewWidth,
+      height: viewHeight
+    });
+    mirrorTaskView.setVisible(false);
 
     // 加载页面
     await mirrorTaskView.webContents.loadURL(url);
@@ -154,31 +140,44 @@ ipcMain.handle('update-daidai-log', async (_, id: string, status: string, messag
 // 获取日志列表
 ipcMain.handle('get-daidai-logs', async (_, options = {}) => {
   try {
-    const { accountSessionId, skip = 0, take = 50 } = options;
+    const { where, pageSize = 50, currentPage = 1 } = options;
+    const startIndex = pageSize && currentPage ? pageSize * (currentPage - 1) : 0;
 
     const query = daidaiLogRepository.createQueryBuilder('log')
       .orderBy('log.createdAt', 'DESC')
-      .skip(skip)
-      .take(take);
+      .skip(startIndex)
+      .take(pageSize);
 
-    if (accountSessionId) {
-      query.where('log.accountSessionId = :accountSessionId', { accountSessionId });
+    // 处理 where 条件
+    if (where) {
+      if (where.accountSessionId) {
+        query.andWhere('log.accountSessionId = :accountSessionId', { accountSessionId: where.accountSessionId });
+      }
+      if (where.type) {
+        // type 字段可能需要根据实际需求处理，这里暂时忽略
+      }
     }
 
-    const [data, total] = await query.getManyAndCount();
+    const [result, count] = await query.getManyAndCount();
+
+    // 添加序号
+    result.forEach((item: any, index) => {
+      item.index = startIndex + index + 1;
+    });
 
     return {
-      success: true,
+      code: 0,
       data: {
-        data,
-        total,
-        pageSize: take,
-        current: Math.floor(skip / take) + 1
+        items: result,
+        total: count
       }
     };
   } catch (error) {
     console.error('获取日志列表失败:', error);
-    return { success: false, error: error.message };
+    return {
+      code: 500,
+      message: error.message
+    };
   }
 });
 
@@ -191,6 +190,18 @@ ipcMain.handle('delete-daidai-logs', async (_, ids = []) => {
     return { success: true };
   } catch (error) {
     console.error('删除日志失败:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// 清除所有日志数据（软件启动时调用）
+ipcMain.handle('clear-all-daidai-logs', async () => {
+  try {
+    await daidaiLogRepository.clear();
+    console.log('已清除所有带带日志数据');
+    return { success: true };
+  } catch (error) {
+    console.error('清除所有日志失败:', error);
     return { success: false, error: error.message };
   }
 });
