@@ -53,10 +53,17 @@ export async function sendWebhookBySession(params: {
   try {
     const { sessionId, content, msgType = 'text' } = params;
 
-    // 根据 sessionId 查找账号会话
-    const accountSession = await AccountSessionEntity.findOne({
+    // 根据 sessionId 查找账号会话，先按 ID 查找，如果找不到再按名称查找
+    let accountSession = await AccountSessionEntity.findOne({
       where: { id: sessionId }
     });
+
+    // 如果按 ID 找不到，尝试按名称查找
+    if (!accountSession) {
+      accountSession = await AccountSessionEntity.findOne({
+        where: { name: sessionId }
+      });
+    }
 
     if (!accountSession) {
       const error = `账号会话不存在: ${sessionId}`;
@@ -116,9 +123,17 @@ export async function validateSessionsWebhook(sessionIds: string[]): Promise<{
     const unboundLeaderboardSessions: string[] = [];
 
     for (const sessionId of sessionIds) {
-      const accountSession = await AccountSessionEntity.findOne({
+      // 先按 ID 查找，如果找不到再按名称查找
+      let accountSession = await AccountSessionEntity.findOne({
         where: { id: sessionId }
       });
+
+      // 如果按 ID 找不到，尝试按名称查找
+      if (!accountSession) {
+        accountSession = await AccountSessionEntity.findOne({
+          where: { name: sessionId }
+        });
+      }
 
       if (!accountSession) {
         console.warn(`⚠️ [validateSessionsWebhook] 账号会话不存在: ${sessionId}`);
