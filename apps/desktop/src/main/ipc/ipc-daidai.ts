@@ -6,6 +6,7 @@ import { UserDeduplication } from "@/orm/entities/user-deduplication";
 import { ipcMain, screen, WebContentsView } from "electron";
 import md5 from "md5";
 import { LessThan, MoreThan } from "typeorm";
+import { sendWebhookBySession, validateSessionsWebhook } from "../webhook/weixin";
 import { mainWindow } from "../windows/app/app";
 
 // 日志仓库
@@ -13,11 +14,34 @@ const daidaiLogRepository = AppDataSource.getRepository(DaidaiLog);
 // 去重仓库
 const userDeduplicationRepository = AppDataSource.getRepository(UserDeduplication);
 
-// 去重时间窗口：10分钟
-const duplicateTime = 60 * 1000 * 10;
+// 去重时间窗口：1小时
+const duplicateTime = 60 * 60 * 1000;
 
 // 镜像任务窗口集合
 const mirrorTaskViews: Map<string, WebContentsView> = new Map();
+
+/**
+ * 检查指定的会话是否正在使用中
+ * @param viewId 视图ID，格式为 ${type}_${name}
+ * @returns 是否正在使用
+ */
+export function checkSessionInUse(viewId: string): boolean {
+  return mirrorTaskViews.has(viewId);
+}
+
+/**
+ * 获取当前监控状态
+ * @returns 监控状态信息
+ */
+export function getMirrorTaskStatus(): { isRunning: boolean; activeCount: number; activeViewIds: string[] } {
+  const activeViews = Array.from(mirrorTaskViews.keys());
+  const isRunning = activeViews.length > 0;
+  return {
+    isRunning,
+    activeCount: activeViews.length,
+    activeViewIds: activeViews
+  };
+}
 
 /**
  * 创建单个镜像任务窗口
@@ -70,6 +94,24 @@ async function createSingleMirrorTaskView(options: { name: string; type: string;
     });
     mirrorTaskView.setVisible(false);
 
+    // 监听渲染进程的console消息
+    mirrorTaskView.webContents.on('console-message', (event, level, message, line, sourceId) => {
+      const prefix = `[${viewId}]`;
+      switch (level) {
+        case 0: // info
+          console.info(`${prefix} ${message}`);
+          break;
+        case 1: // warning
+          console.warn(`${prefix} ${message}`);
+          break;
+        case 2: // error
+          console.error(`${prefix} ${message}`);
+          break;
+        default:
+          console.log(`${prefix} ${message}`);
+      }
+    });
+
     // 加载页面
     await mirrorTaskView.webContents.loadURL(url);
 
@@ -90,7 +132,7 @@ async function createSingleMirrorTaskView(options: { name: string; type: string;
 
 // 添加日志
 ipcMain.handle('update-daidai-log', async (_, id: string, status: string, message?: string, roomId?: string, chatroomName?: string) => {
-  console.info(`[update-daidai-log]`, 'id=', id, ' status=', status, ' message=', message, ' roomId', roomId, ' chatroomName=', chatroomName)
+  console.info(`[update-daidai-log]`, chatroomName || '\t', ' status=', status, ' message=', message, ' roomId', roomId)
   try {
     let log: DaidaiLog;
 
@@ -434,9 +476,142 @@ ipcMain.handle('report-dai-dai-event', async (_, reportData: { sessionId: string
       const deduplicationRecord = new UserDeduplication();
       deduplicationRecord.userId = userId;
       await userDeduplicationRepository.save(deduplicationRecord);
+
+      // 发送到 Webhook
+      try {
+        // 构建 markdown 格式的用户信息卡片
+        const userInfo = data; // data 包含了用户信息
+        const favoriteGamesText = Array.isArray(userInfo.favoriteGames) && userInfo.favoriteGames.length > 0
+          ? userInfo.favoriteGames.join('、')
+          : '无';
+
+        const webhookContent = `## 🎮 进房消息
+> **用户ID：** ${userInfo.userId}
+> **昵称：** ${userInfo.nickName}
+> **姓别：** ${userInfo.sex}
+> **等级：** ${userInfo.wealthLevelName}
+> **是否萌新：** ${userInfo.mengxin ? '是' : '否'}
+> **喜欢的内容：** ${favoriteGamesText}
+
+---
+**房间ID：** ${roomId}  
+**当前时间：** ${new Date().toLocaleString('zh-CN')}`;
+
+        const result = await sendWebhookBySession({
+          sessionId,
+          content: webhookContent,
+          msgType: 'markdown'
+        });
+
+        if (result.success) {
+          console.info(`📤 [report-dai-dai-event] Webhook 发送成功 - sessionId: ${sessionId}`);
+        } else {
+          console.error(`❌ [report-dai-dai-event] Webhook 发送失败 - sessionId: ${sessionId}, error: ${result.error}`);
+        }
+      } catch (webhookError) {
+        console.error(`❌ [report-dai-dai-event] Webhook 发送异常 - sessionId: ${sessionId}`, webhookError);
+      }
     }
   } catch (error) {
     console.error('处理 [report-dai-dai-event] 事件失败:', error);
+  }
+});
+
+// 添加 webhook 验证的 IPC 处理函数
+ipcMain.handle('validate-sessions-webhook', async (_, sessionIds: string[]) => {
+  try {
+    const result = await validateSessionsWebhook(sessionIds);
+    return result;
+  } catch (error) {
+    console.error('[validate-sessions-webhook] 验证失败:', error);
+    return {
+      success: false,
+      unboundSessions: [],
+      message: `验证失败: ${error.message}`
+    };
+  }
+});
+
+// 获取房间榜单数据的 IPC 处理函数
+ipcMain.handle('fetch-room-leaderboard-data', async (_, options: {
+  sessionId: string;
+  roomId: string;
+}): Promise<{
+  success: boolean;
+  data?: {
+    meiliTopInfo: any[];
+    wealthTopInfo: any[];
+  };
+  error?: string;
+}> => {
+  try {
+    const { sessionId, roomId } = options;
+    console.log(`🚀 [fetch-room-leaderboard-data] 开始获取房间 ${roomId} 的榜单数据`);
+
+    // 根据 sessionId 找到对应的镜像任务窗口
+    const viewId = `daidai_${sessionId}`;
+    const targetView = mirrorTaskViews.get(viewId);
+
+    if (!targetView) {
+      const error = `未找到对应的镜像任务窗口: ${viewId}`;
+      console.error(`❌ [fetch-room-leaderboard-data] ${error}`);
+      return { success: false, error };
+    }
+
+    // 创建一个 Promise 来等待渲染进程的响应
+    return new Promise((resolve) => {
+      const requestId = `leaderboard_${sessionId}_${roomId}_${Date.now()}`;
+      const timeoutId = setTimeout(() => {
+        console.error(`❌ [fetch-room-leaderboard-data] 获取房间 ${roomId} 榜单数据超时`);
+        resolve({
+          success: false,
+          error: '获取榜单数据超时'
+        });
+      }, 30000); // 30秒超时
+
+      // 监听来自WebContentsView的IPC响应
+      const responseHandler = (event: Electron.IpcMainEvent, responseData: any) => {
+        if (responseData.requestId === requestId) {
+          clearTimeout(timeoutId);
+          ipcMain.off('leaderboard-data-response', responseHandler);
+
+          if (responseData.success) {
+            console.log(`✅ [fetch-room-leaderboard-data] 成功获取房间 ${roomId} 的榜单数据`);
+            resolve({
+              success: true,
+              data: responseData.data
+            });
+          } else {
+            console.error(`❌ [fetch-room-leaderboard-data] 获取榜单数据失败: ${responseData.error}`);
+            resolve({
+              success: false,
+              error: responseData.error
+            });
+          }
+        }
+      };
+
+      // 监听来自渲染进程的响应
+      ipcMain.on('leaderboard-data-response', responseHandler);
+
+      // 向渲染进程发送获取榜单数据的请求
+      console.log(`📤 [fetch-room-leaderboard-data] 向WebContentsView发送请求:`, {
+        requestId,
+        roomId,
+        sessionId,
+        viewId
+      });
+      targetView.webContents.send('fetch-leaderboard-data-request', {
+        requestId,
+        roomId,
+        sessionId
+      });
+      console.log(`📤 [fetch-room-leaderboard-data] 请求已发送到WebContentsView`);
+    });
+
+  } catch (error) {
+    console.error('❌ [fetch-room-leaderboard-data] 获取榜单数据失败:', error);
+    return { success: false, error: error.message };
   }
 });
 
@@ -450,4 +625,82 @@ setInterval(async () => {
     console.error('[report-dai-dai-event] 清理过期去重记录失败:', error);
   }
 }, duplicateTime);
+
+// 导出榜单数据获取函数，供调度器直接调用
+export async function fetchRoomLeaderboardData(options: {
+  sessionId: string;
+  roomId: string;
+}): Promise<{
+  success: boolean;
+  data?: {
+    meiliTopInfo: any[];
+    wealthTopInfo: any[];
+  };
+  error?: string;
+}> {
+  try {
+    const { sessionId, roomId } = options;
+    const viewId = `daidai_${sessionId}`;
+    const targetView = mirrorTaskViews.get(viewId);
+
+    if (!targetView) {
+      const error = `未找到对应的镜像任务窗口: ${viewId}`;
+      console.error(`❌ [fetchRoomLeaderboardData] ${error}`);
+      console.error(`❌ [fetchRoomLeaderboardData] 可用的viewId列表:`, Array.from(mirrorTaskViews.keys()));
+      return { success: false, error };
+    }
+
+    // 生成唯一的请求ID
+    const requestId = `leaderboard_${sessionId}_${roomId}_${Date.now()}`;
+
+    // 创建一个 Promise 来等待渲染进程的响应
+    return new Promise((resolve) => {
+      const timeoutId = setTimeout(() => {
+        ipcMain.off('leaderboard-data-response', responseHandler);
+        resolve({
+          success: false,
+          error: '获取榜单数据超时'
+        });
+      }, 30000); // 30秒超时
+
+      // 监听渲染进程的响应
+      const responseHandler = (event: any, responseData: any) => {
+        console.log(`📥 [fetchRoomLeaderboardData] 收到IPC响应，requestId: ${responseData.requestId}, 期望: ${requestId}`);
+        if (responseData.requestId === requestId) {
+          clearTimeout(timeoutId);
+          ipcMain.off('leaderboard-data-response', responseHandler);
+
+          if (responseData.success) {
+            console.log(`✅ [fetchRoomLeaderboardData] 成功获取房间 ${roomId} 的榜单数据`);
+            resolve({
+              success: true,
+              data: responseData.data
+            });
+          } else {
+            console.error(`❌ [fetchRoomLeaderboardData] 获取榜单数据失败: ${responseData.error}`);
+            resolve({
+              success: false,
+              error: responseData.error
+            });
+          }
+        }
+      };
+
+      // 监听来自渲染进程的响应
+      ipcMain.on('leaderboard-data-response', responseHandler);
+
+      // 向渲染进程发送获取榜单数据的请求
+      targetView.webContents.send('fetch-leaderboard-data-request', {
+        requestId,
+        roomId,
+        sessionId
+      });
+      console.log(`📤 [fetchRoomLeaderboardData] IPC请求已发送到视图 ${viewId}`);
+    });
+
+  } catch (error) {
+    console.error('❌ [fetchRoomLeaderboardData] 获取榜单数据失败:', error);
+    return { success: false, error: error.message };
+  }
+}
 

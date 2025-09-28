@@ -23,6 +23,21 @@ export class AccountSessionEntity extends BaseEntity {
   @Column({ type: 'json', nullable: true })
   data: Record<any, any>
 
+  @Column({ type: 'varchar', nullable: true })
+  webhook_bot: string
+
+  @Column({ type: 'varchar', nullable: true })
+  webhook_url: string
+
+  @Column({ type: 'varchar', nullable: true })
+  leaderboard_bot: string
+
+  @Column({ type: 'varchar', nullable: true })
+  leaderboard_webhook_url: string
+
+  @Column({ type: 'boolean', default: true })
+  enabled: boolean
+
   @CreateDateColumn()
   created_time: Date
 

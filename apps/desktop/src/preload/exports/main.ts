@@ -46,7 +46,7 @@ const __API__ = {
     return ipcRenderer.invoke('update-account-session-login-status', name, loginStatus)
   },
   async deleteAccountSession(ids = {}) {
-    return ipcRenderer.invoke('delete-account-session', ids)
+    return await ipcRenderer.invoke('delete-account-session', ids)
   },
   async getDaidaiLogs(options: {
     accountSessionId?: string;
@@ -106,6 +106,31 @@ const __API__ = {
     chatroomName?: string;
   }) {
     return ipcRenderer.invoke('reconnect-room', options);
+  },
+  validateSessionsWebhook(sessionIds: string[]) {
+    return ipcRenderer.invoke('validate-sessions-webhook', sessionIds);
+  },
+  fetchRoomLeaderboardData(options: {
+    sessionId: string;
+    roomId: string;
+  }) {
+    return ipcRenderer.invoke('fetch-room-leaderboard-data', options);
+  },
+  // 机器人相关接口
+  getBotList(options = {}) {
+    return ipcRenderer.invoke('get-bot-list', options);
+  },
+  createBot(data = {}) {
+    return ipcRenderer.invoke('create-bot', data);
+  },
+  updateBot(id: string, data: Record<any, any> = {}) {
+    return ipcRenderer.invoke('update-bot', id, data);
+  },
+  deleteBot(ids: string[] = []) {
+    return ipcRenderer.invoke('delete-bot', ids);
+  },
+  getOneBot(id: string) {
+    return ipcRenderer.invoke('get-one-bot', id);
   }
 }
 window['__API__'] = __API__;

@@ -3,7 +3,7 @@ import { useVbenForm } from '#/adapter/form';
 import type { VxeTableGridOptions } from '#/adapter/vxe-table';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { useVbenModal } from '@vben/common-ui';
-import { Button, message } from 'ant-design-vue';
+import { Button, message, Select, Switch } from 'ant-design-vue';
 import dayjs from 'dayjs';
 import { onMounted, onUnmounted, ref } from 'vue';
 
@@ -20,6 +20,109 @@ const { type, defaultUrl } = defineProps({
 
 const emit = defineEmits(['browser-opened'])
 
+// 机器人列表状态
+const botsList = ref<Array<{ id: string; name: string; webhookUrl: string }>>([]);
+
+// 加载机器人列表
+const loadBotsList = async () => {
+  try {
+    const result = await __API__.getBotList();
+    if (result.code === 0 && result.data) {
+      botsList.value = result.data.items.map(bot => ({
+        id: bot.id,
+        name: bot.name,
+        webhookUrl: bot.webhookUrl
+      }));
+    } else {
+      console.error('加载机器人列表失败:', result.message);
+      botsList.value = [];
+    }
+  } catch (error) {
+    console.error('加载机器人列表失败:', error);
+    botsList.value = [];
+  }
+};
+
+// 处理 webhook 绑定变更
+const handleWebhookChange = async (sessionId: string, botName: any) => {
+  try {
+    if (!botName || typeof botName !== 'string') {
+      // 清除绑定
+      await __API__.updateAccountSession(sessionId, {
+        webhook_bot: null,
+        webhook_url: null
+      });
+      message.success('已清除机器人绑定');
+      gridApi.reload();
+      return;
+    }
+
+    const selectedBot = botsList.value.find(bot => bot.name === botName);
+    if (!selectedBot) {
+      message.error('未找到选中的机器人');
+      return;
+    }
+
+    await __API__.updateAccountSession(sessionId, {
+      webhook_bot: botName,
+      webhook_url: selectedBot.webhookUrl
+    });
+    
+    message.success('机器人绑定成功');
+    gridApi.reload();
+  } catch (error) {
+    console.error('绑定机器人失败:', error);
+    message.error('绑定机器人失败');
+  }
+};
+
+// 处理榜单机器人绑定变更
+const handleLeaderboardBotChange = async (sessionId: string, botName: any) => {
+  try {
+    if (!botName || typeof botName !== 'string') {
+      // 清除绑定
+      await __API__.updateAccountSession(sessionId, {
+        leaderboard_bot: null,
+        leaderboard_webhook_url: null
+      });
+      message.success('已清除榜单机器人绑定');
+      gridApi.reload();
+      return;
+    }
+
+    const selectedBot = botsList.value.find(bot => bot.name === botName);
+    if (!selectedBot) {
+      message.error('未找到选中的榜单机器人');
+      return;
+    }
+
+    await __API__.updateAccountSession(sessionId, {
+      leaderboard_bot: botName,
+      leaderboard_webhook_url: selectedBot.webhookUrl
+    });
+    
+    message.success('榜单机器人绑定成功');
+    gridApi.reload();
+  } catch (error) {
+    console.error('绑定榜单机器人失败:', error);
+    message.error('绑定榜单机器人失败');
+  }
+};
+
+// 处理启用状态变更
+const handleEnabledChange = async (sessionId: string, enabled: boolean) => {
+  try {
+    await __API__.updateAccountSession(sessionId, {
+      enabled: enabled
+    });
+    
+    message.success(enabled ? '已启用账号' : '已禁用账号');
+    gridApi.reload();
+  } catch (error) {
+    console.error('更新启用状态失败:', error);
+    message.error('更新启用状态失败');
+  }
+};
 
 // 日期格式化函数
 const formatTimeField = (time: string | Date | null): string => {
@@ -141,7 +244,6 @@ const [createForm, createFormApi] = useVbenForm({
   ]
 })
 
-
 // 表格配置
 const [Grid, gridApi] = useVbenVxeGrid({
   showSearchForm: false,
@@ -174,6 +276,30 @@ const [Grid, gridApi] = useVbenVxeGrid({
         width: 100,
         slots: {
           default: 'login_status'
+        }
+      },
+      {
+        field: 'webhook_bot',
+        title: '绑定机器人',
+        width: 150,
+        slots: {
+          default: 'webhook_bot'
+        }
+      },
+      {
+        field: 'leaderboard_bot',
+        title: '榜单机器人',
+        width: 150,
+        slots: {
+          default: 'leaderboard_bot'
+        }
+      },
+      {
+        field: 'enabled',
+        title: '启用状态',
+        width: 100,
+        slots: {
+          default: 'enabled'
         }
       },
       {
@@ -237,15 +363,31 @@ const [Grid, gridApi] = useVbenVxeGrid({
 });
 
 // 删除选中行
-function deleteRows() {
+async function deleteRows() {
   const grid = gridApi.grid
   const selecterRecord = grid.getCheckboxRecords()
   const deleteIds = selecterRecord.map(item => item.id)
   if (deleteIds.length === 0) {
+    message.warning('请先选择要删除的账号会话')
     return
   }
-  __API__.deleteAccountSession(deleteIds)
-  gridApi.reload()
+  
+  try {
+    const result = await __API__.deleteAccountSession(deleteIds)
+    
+    if (result && result.success === false) {
+      // 如果有账号正在使用中，显示警告信息
+      message.error(result.message)
+      return
+    }
+    
+    // 删除成功
+    message.success(result?.message || '删除成功')
+    gridApi.reload()
+  } catch (error) {
+    console.error('删除账号会话失败:', error)
+    message.error('删除账号会话失败')
+  }
 }
 
 function openBrowser(row: any) {
@@ -268,7 +410,6 @@ function openConfigModal(row: any) {
   configModalApi.open()
 }
 
-
 // 格式化数据显示
 function formatData(data: any) {
   if (!data) return ''
@@ -286,8 +427,12 @@ function formatData(data: any) {
 const refreshTimer = ref<NodeJS.Timeout | null>(null)
 
 onMounted(() => {
+  loadBotsList();
   gridApi.query()
-  refreshTimer.value = setInterval(() => gridApi.query(), 20000)
+  refreshTimer.value = setInterval(() => {
+    loadBotsList(); // 定期刷新机器人列表
+    gridApi.query();
+  }, 20000)
 })
 
 onUnmounted(() => {
@@ -310,6 +455,46 @@ onUnmounted(() => {
       <span :style="{ color: row.login_status === '已登录' ? '#52c41a' : '#ff4d4f' }">
         {{ row.login_status || '未登录' }}
       </span>
+    </template>
+    <template #webhook_bot="{ row }">
+      <Select
+        :value="row.webhook_bot"
+        placeholder="选择机器人"
+        style="width: 100%"
+        allow-clear
+        @change="(value) => handleWebhookChange(row.id, value)"
+      >
+        <Select.Option
+          v-for="bot in botsList"
+          :key="bot.id"
+          :value="bot.name"
+        >
+          {{ bot.name }}
+        </Select.Option>
+      </Select>
+    </template>
+    <template #leaderboard_bot="{ row }">
+      <Select
+        :value="row.leaderboard_bot"
+        placeholder="选择榜单机器人"
+        style="width: 100%"
+        allow-clear
+        @change="(value) => handleLeaderboardBotChange(row.id, value)"
+      >
+        <Select.Option
+          v-for="bot in botsList"
+          :key="bot.id"
+          :value="bot.name"
+        >
+          {{ bot.name }}
+        </Select.Option>
+      </Select>
+    </template>
+    <template #enabled="{ row }">
+      <Switch
+        :checked="row.enabled !== false"
+        @change="(checked) => handleEnabledChange(row.id, !!checked)"
+      />
     </template>
     <template #action="{ row }">
       <Button class="mr-2" type="primary" @click="openBrowser(row)">

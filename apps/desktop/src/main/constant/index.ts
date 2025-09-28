@@ -1,0 +1,1 @@
+export const WEIXIN_WEBHOOK_KEY = 'c4b286d9-5a84-4326-ae4a-e054721269f4'

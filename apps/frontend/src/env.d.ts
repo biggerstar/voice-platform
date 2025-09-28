@@ -31,6 +31,40 @@ interface DaidaiLogResponse {
   error?: string;
 }
 
+// Webhook 验证相关类型定义
+interface WebhookValidationResponse {
+  success: boolean;
+  unboundSessions: string[];
+  unboundLeaderboardSessions: string[];
+  message?: string;
+}
+
+// 机器人相关类型定义
+interface BotConfig {
+  id: string;
+  name: string;
+  webhookUrl: string;
+  created_time: Date;
+  updated_time: Date;
+}
+
+interface BotListResponse {
+  code: number;
+  data?: {
+    items: BotConfig[];
+    total: number;
+  };
+  message?: string;
+  error?: string;
+}
+
+interface BotResponse {
+  code: number;
+  data?: BotConfig;
+  message?: string;
+  error?: string;
+}
+
 declare global {
   declare interface Window {
     electronTitlebar: CustomTitlebar
@@ -58,7 +92,7 @@ declare global {
     getAccountSessionList(options: Record<any, any>): Promise<any>
     createAccountSession(data: Record<any, any>): Promise<any>
     updateAccountSession(id: string, data: Record<any, any>): Promise<any>
-    deleteAccountSession(ids: string[]): Promise<void>
+    deleteAccountSession(ids: string[]): Promise<{ success: boolean; message: string; inUseSessions?: string[] }>
     // 日志相关接口
     getDaidaiLogs(options?: DaidaiLogQueryOptions): Promise<DaidaiLogResponse>
     updateDaidaiLog(id: string, status: string, message?: string, roomId?: string): Promise<{ success: boolean; data?: DaidaiLog; error?: string }>
@@ -99,6 +133,26 @@ declare global {
       message?: string
       error?: string
     }>
+    // Webhook 验证接口
+    validateSessionsWebhook(sessionIds: string[]): Promise<WebhookValidationResponse>
+    // 榜单数据获取接口
+    fetchRoomLeaderboardData(options: {
+      sessionId: string;
+      roomId: string;
+    }): Promise<{
+      success: boolean;
+      data?: {
+        meiliTopInfo: any[];
+        wealthTopInfo: any[];
+      };
+      error?: string;
+    }>
+    // 机器人相关接口
+    getBotList(options?: Record<any, any>): Promise<BotListResponse>
+    createBot(data: Record<any, any>): Promise<BotResponse>
+    updateBot(id: string, data: Record<any, any>): Promise<BotResponse>
+    deleteBot(ids: string[]): Promise<BotResponse>
+    getOneBot(id: string): Promise<BotResponse>
   }
 
   declare const __TABLE_API__: {

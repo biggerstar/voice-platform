@@ -95,12 +95,12 @@ export function useColumns(): VxeTableGridOptions['columns'] {
         default: 'remark'
       },
     },
-    {
-      field: 'status',
-      title: '状态',
-      width: 100,
-      sortable: true,
-    },
+    // {
+    //   field: 'status',
+    //   title: '状态',
+    //   width: 100,
+    //   sortable: true,
+    // },
     {
       title: '操作',
       width: 120,

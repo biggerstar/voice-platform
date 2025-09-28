@@ -90,6 +90,44 @@ export class DaiDaiChatRoomSocket extends BaseNimSocket<import('@yxim/nim-web-sd
   }
 
   /**
+   * 获取房间魅力榜
+   */
+  public async fetchRoomMeiliTopInfo(targetRoomId: string) {
+    if (!this.Authorization) {
+      throw new Error('未指定 Authorization')
+    }
+    if (!this.userId) {
+      throw new Error('未指定 userId')
+    }
+    const config = {
+      "type": 2,
+      "dtype": 1,
+      "roomid": targetRoomId
+    }
+    const res = await window.HTTP._room_tops(config)
+    return res?.data
+  }
+
+  /**
+   * 获取房间财富榜
+   */
+  public async fetchRoomWealthTopInfo(targetRoomId: string) {
+    if (!this.Authorization) {
+      throw new Error('未指定 Authorization')
+    }
+    if (!this.userId) {
+      throw new Error('未指定 userId')
+    }
+    const config = {
+      "type": 1,
+      "dtype": 1,
+      "roomid": targetRoomId
+    }
+    const res = await window.HTTP._room_tops(config)
+    return res?.data
+  }
+
+  /**
    * 拦截 this.window['SDK']['NIM'] 的执行并输出相关函数的入参信息
    */
   public override interceptFunctionExecAndOutput() {

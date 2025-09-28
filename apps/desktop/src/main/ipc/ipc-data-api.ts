@@ -126,8 +126,49 @@ ipcMain.handle('create-account-session', async (_ev: any, data: Record<any, any>
   return true
 })
 
-ipcMain.handle('delete-account-session', (_ev: any, ids: string[]) => {
-  AccountSessionEntity.delete(ids)
+ipcMain.handle('delete-account-session', async (_ev: any, ids: string[]) => {
+  try {
+    // 检查要删除的账号会话是否正在使用中
+    const accountSessions = await AccountSessionEntity.findByIds(ids);
+    const inUseSessions = [];
+
+    for (const session of accountSessions) {
+      // 检查是否有活跃的监控任务
+      const viewId = `${session.type}_${session.name}`;
+      
+      // 导入 mirrorTaskViews 来检查是否正在使用
+      const { checkSessionInUse } = require('./ipc-daidai');
+      const isInUse = checkSessionInUse(viewId);
+      
+      if (isInUse) {
+        inUseSessions.push(session.name);
+      }
+    }
+
+    // 如果有正在使用的会话，返回错误信息
+    if (inUseSessions.length > 0) {
+      return {
+        success: false,
+        message: `以下账号正在使用中，无法删除：${inUseSessions.join('、')}。请先停止监控后再删除。`,
+        inUseSessions
+      };
+    }
+
+    // 如果没有正在使用的会话，执行删除
+    await AccountSessionEntity.delete(ids);
+    
+    return {
+      success: true,
+      message: `成功删除 ${ids.length} 个账号会话`
+    };
+  } catch (error) {
+    console.error('删除账号会话失败:', error);
+    return {
+      success: false,
+      message: '删除账号会话失败',
+      error: error.message
+    };
+  }
 })
 
 ipcMain.handle('get-one-account-session-data', async (_ev, name: string) => {

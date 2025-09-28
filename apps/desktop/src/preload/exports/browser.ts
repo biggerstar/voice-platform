@@ -4,7 +4,7 @@ import { usePageLoading } from "../common/use-page-loading";
 import { useAboutBlankPage } from "../site/about-blank";
 import { useDaiDai } from "../site/daidai/use-daidai";
 
-console.log('浏览器加载成功!')
+console.log('浏览器加载成功!', `当前页面URL: ${location.href}`)
 
 useNavigator()
 usePageLoading()
@@ -12,7 +12,6 @@ usePageLoading()
 message.config({
   top: "120px"
 })
-
 if (location.href === 'about:blank') {
   useAboutBlankPage();
 }

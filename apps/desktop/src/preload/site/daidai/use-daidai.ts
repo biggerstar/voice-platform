@@ -8,6 +8,8 @@ import { updateLog } from "./utils/updateLog";
 const socketMap = new Map<string, DaiDaiChatRoomSocket>();
 
 function joinRoom(roomId: number, channelId: string, sessionId: string) {
+  console.info(`🚀 [joinRoom] 开始加入房间，roomId: ${roomId}, channelId: ${channelId}, sessionId: ${sessionId}`);
+
   const account = `wp_${getUid()}`
   const authorization = getAuthorization()
   let reconnectCont: number = 0
@@ -21,13 +23,13 @@ function joinRoom(roomId: number, channelId: string, sessionId: string) {
 
   if (daiDaiChatRoomSocket) {
     // 复用现有的 socket
-    console.log(`🔄 复用现有 socket 实例: ${socketKey}`);
+    console.info(`🔄 复用现有 socket 实例: ${socketKey}`);
     updateLog(sessionId, 'info', `复用现有连接，重新进房中...`, roomId.toString());
 
     // 重新连接
     setTimeout(() => {
       daiDaiChatRoomSocket!.connect().then(() => {
-        console.log(`✅ 复用 socket 重连成功: ${socketKey}`);
+        console.info(`✅ 复用 socket 重连成功: ${socketKey}`);
       }).catch((error) => {
         console.error(`❌ 复用 socket 重连失败: ${socketKey}`, error);
         updateLog(sessionId, 'error', `复用连接失败: ${error.message}`, roomId.toString());
@@ -37,7 +39,6 @@ function joinRoom(roomId: number, channelId: string, sessionId: string) {
   }
 
   // 创建新的 socket 实例
-  console.log(`🆕 创建新的 socket 实例: ${socketKey}`);
   daiDaiChatRoomSocket = new DaiDaiChatRoomSocket();
 
   // 存储到 Map 中
@@ -104,6 +105,12 @@ function joinRoom(roomId: number, channelId: string, sessionId: string) {
       }
     })
     setTimeout(() => daiDaiChatRoomSocket!.connect().then(), 500)
+    // daiDaiChatRoomSocket.fetchRoomMeiliTopInfo(roomId.toString()).then((res) => {
+    //   console.info(`🚀 ~ useDaiDai ~ res:`, res)
+    // })
+    // daiDaiChatRoomSocket.fetchRoomWealthTopInfo(roomId.toString()).then((res) => {
+    //   console.info(`🚀 ~ useDaiDai ~ res:`, res)
+    // })
   })
 }
 
@@ -186,8 +193,9 @@ function checkLoginStatusAndUpdate(daidaiName: string) {
 }
 
 export function useDaiDai() {
-  console.info('useDaiDai 加载成功')
+  console.info('[useDaiDai] 加载成功')
   const daidaiName = process.argv.find(arg => arg.startsWith('daidai-name='))?.split('=')[1] || ''
+  console.info(`🎯 [useDaiDai] 开始初始化，会话名称: ${daidaiName}`);
   const daidaiPrelogin = process.argv.find(arg => arg.startsWith('daidai-prelogin='))?.split('=')[1] || ''
 
   checkLoginStatusAndUpdate(daidaiName)
@@ -199,26 +207,77 @@ export function useDaiDai() {
     accountSessionId: string;
     chatroomName?: string;
   }) => {
-    console.log('🔄 [reconnect-room-request] 收到重连请求:', data);
+    console.info('🔄 [reconnect-room-request] 收到重连请求:', data);
     const { roomId, accountSessionId } = data;
-
-    // 重新加入房间（会自动复用现有 socket）
     joinRoom(parseInt(roomId), '1000', accountSessionId);
-    console.log(`✅ [reconnect-room-request] 重连房间 ${roomId} 完成`);
+  });
+
+  // 监听获取榜单数据请求
+  console.info('📋 [useDaiDai] 注册fetch-leaderboard-data-request监听器');
+  ipcRenderer.on('fetch-leaderboard-data-request', async (event, data: {
+    requestId: string;
+    roomId: string;
+    sessionId: string;
+  }) => {
+    console.info('📊 [fetch-leaderboard-data-request] 收到榜单数据请求:', data);
+    const { requestId, roomId, sessionId } = data;
+
+    try {
+      // 获取对应房间的socket实例
+      const socketKey = `${roomId}_${sessionId}`;
+      const socket = socketMap.get(socketKey);
+
+      if (!socket) {
+        const error = `未找到房间 ${roomId} 的socket连接，期望key: ${socketKey}`;
+        console.error(`❌ [fetch-leaderboard-data-request] ${error}`);
+        console.error(`❌ [fetch-leaderboard-data-request] 可用的socket keys:`, Array.from(socketMap.keys()));
+        ipcRenderer.send('leaderboard-data-response', {
+          requestId,
+          success: false,
+          error
+        });
+        return;
+      }
+
+      console.info(`✅ [fetch-leaderboard-data-request] 找到socket连接，开始获取榜单数据`);
+
+      // 并行获取魅力榜和财富榜数据
+      const [meiliTopInfo, wealthTopInfo] = await Promise.all([
+        socket.fetchRoomMeiliTopInfo(roomId),
+        socket.fetchRoomWealthTopInfo(roomId)
+      ]);
+
+      // 发送响应给主进程
+      ipcRenderer.send('leaderboard-data-response', {
+        requestId,
+        success: true,
+        data: {
+          meiliTopInfo: meiliTopInfo || [],
+          wealthTopInfo: wealthTopInfo || []
+        }
+      });
+    } catch (error) {
+      console.info(`❌ [fetch-leaderboard-data-request] 获取榜单数据失败:`, error);
+      ipcRenderer.send('leaderboard-data-response', {
+        requestId,
+        success: false,
+        error: error instanceof Error ? error.message : '获取榜单数据失败'
+      });
+    }
   });
 
   // 预登录， 退出
-  if (daidaiPrelogin) return
+  if (daidaiPrelogin) return;
 
+  console.info(`🎯 [useDaiDai] 注册window load事件监听器`);
   window.addEventListener('load', async () => {
     await sleep(3000)
     await injectCode()
-    takeOverPage()
+    await takeOverPage()
     const accountSession = await ipcRenderer.invoke('get-one-account-session-data', daidaiName)
-    console.info(`当前运行 Session 信息:`, accountSession.data)
     const roomList = accountSession?.data?.data?.rooms || []
     // const roomList = [185173982]  // 派单厅
-    // const roomList = [11320152375, 2703493081, 438326816]
-    roomList.forEach(roomId => joinRoom(roomId, '1000', accountSession.data.name));
+    // const roomList = [3910452462]
+    roomList.forEach(roomId => joinRoom(roomId, '1000', daidaiName));
   })
 }

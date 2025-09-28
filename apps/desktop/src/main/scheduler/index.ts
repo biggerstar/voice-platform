@@ -1,5 +1,6 @@
 import { app } from 'electron';
 import { LogCleanupScheduler } from './log-cleanup-scheduler';
+import { LeaderboardScheduler } from './leaderboard-scheduler';
 
 /**
  * 定时任务管理器
@@ -8,10 +9,12 @@ import { LogCleanupScheduler } from './log-cleanup-scheduler';
 class SchedulerManager {
   private static instance: SchedulerManager;
   private logCleanupScheduler: LogCleanupScheduler;
+  private leaderboardScheduler: LeaderboardScheduler;
   private isInitialized = false;
 
   private constructor() {
     this.logCleanupScheduler = LogCleanupScheduler.getInstance();
+    this.leaderboardScheduler = LeaderboardScheduler.getInstance();
   }
 
   /**
@@ -37,6 +40,9 @@ class SchedulerManager {
       // 启动日志清理定时任务
       await this.logCleanupScheduler.startScheduledCleanup();
 
+      // 启动榜单定时任务
+      await this.leaderboardScheduler.startScheduledTask();
+
       // 监听应用退出事件，确保定时任务优雅关闭
       app.on('will-quit', () => {
         this.shutdown();
@@ -56,6 +62,7 @@ class SchedulerManager {
   private shutdown(): void {
     console.log('正在关闭所有定时任务...');
     this.logCleanupScheduler.stopScheduledCleanup();
+    this.leaderboardScheduler.stopScheduledTask();
     console.log('所有定时任务已关闭');
   }
 
@@ -63,9 +70,8 @@ class SchedulerManager {
    * 重启所有定时任务
    */
   async restartAll(): Promise<void> {
-    console.log('正在重启所有定时任务...');
-    await this.logCleanupScheduler.restartScheduledCleanup();
-    console.log('所有定时任务已重启');
+    this.shutdown();
+    await this.initialize();
   }
 }
 
