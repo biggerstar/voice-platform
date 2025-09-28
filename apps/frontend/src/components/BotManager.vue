@@ -121,7 +121,7 @@ const [createForm, createFormApi] = useVbenForm({
         rows: 3,
       },
       fieldName: 'webhookUrl',
-      label: 'Webhook 地址',
+      label: 'Webhook',
       rules: 'required',
     },
   ]
@@ -312,7 +312,7 @@ onMounted(() => {
 
 <template>
   <div>
-    <Grid table-title="机器人管理">
+    <Grid table-title="">
       <template #action="{ row }">
         <Button class="mr-2" type="primary" size="small" @click="editBot(row)">
           编辑
@@ -332,7 +332,7 @@ onMounted(() => {
     </Grid>
 
     <!-- 新建机器人模态框 -->
-    <createModal class="w-[600px]" title="添加机器人">
+    <createModal class="w-[800px]" title="添加机器人">
       <createForm />
     </createModal>
 

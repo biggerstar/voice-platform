@@ -229,7 +229,7 @@ const [createForm, createFormApi] = useVbenForm({
         placeholder: '请输入会话名称',
       },
       fieldName: 'name',
-      label: '会话名称',
+      label: '账号名称',
       rules: 'required',
     },
     {
@@ -445,7 +445,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <Grid :table-title="`房间会话管理`">
+  <Grid :table-title="``">
     <template #data="{ row }">
       <div style="max-height: 100px; overflow-y: auto; font-size: 12px; white-space: pre-wrap;">
         {{ formatData(row.data) }}
@@ -509,9 +509,9 @@ onUnmounted(() => {
         删除
       </Button>
       <Button class="mr-2" type="primary" @click="() => createModalApi.open()">
-        添加房间会话
+        添加账号
       </Button>
-      <createModal class="w-[600px]" title="房间管理">
+      <createModal class="w-[600px]" title="账号管理">
         <createForm></createForm>
       </createModal>
       <ConfigModal class="w-[600px]" title="配置房间">
