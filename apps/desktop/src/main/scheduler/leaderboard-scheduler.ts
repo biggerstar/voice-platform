@@ -10,10 +10,10 @@ function getRankEmoji(rank: number): string {
   if (rank === 1) return '🥇';
   if (rank === 2) return '🥈';
   if (rank === 3) return '🥉';
-  
+
   // 第四名开始使用圆圈数字符号
   const circleNumbers = ['⓪', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩', '⑪', '⑫', '⑬', '⑭', '⑮', '⑯', '⑰', '⑱', '⑲', '⑳'];
-  
+
   if (rank <= 20) {
     return ` ${circleNumbers[rank]} `;
   } else {
@@ -26,7 +26,7 @@ function getRankEmoji(rank: number): string {
  */
 function formatLeaderboardToMarkdown(meiliTopInfo: any[], wealthTopInfo: any[], roomName?: string): string {
   const now = new Date();
-  const timeStr = now.toLocaleString('zh-CN', { 
+  const timeStr = now.toLocaleString('zh-CN', {
     timeZone: 'Asia/Shanghai',
     year: 'numeric',
     month: '2-digit',
@@ -45,7 +45,7 @@ function formatLeaderboardToMarkdown(meiliTopInfo: any[], wealthTopInfo: any[], 
       const emoji = getRankEmoji(rank);
       const nickname = item.nickname || item.name;
       if (nickname) {
-        markdown += `> ${emoji}  ${item.uid} - ${nickname} \n`; 
+        markdown += `> ${emoji}  ${item.uid} - ${nickname} \n`;
       }
     });
   }
@@ -59,7 +59,7 @@ function formatLeaderboardToMarkdown(meiliTopInfo: any[], wealthTopInfo: any[], 
       const emoji = getRankEmoji(rank);
       const nickname = item.nickname || item.name;
       if (nickname) {
-        markdown += `> ${emoji}  ${item.uid} - ${nickname} \n`; 
+        markdown += `> ${emoji}  ${item.uid} - ${nickname} \n`;
       }
     });
   }
@@ -93,7 +93,7 @@ async function fetchAndSendSingleRoomData(task: RoomTask): Promise<void> {
 
     // 获取榜单数据 - 直接调用导出的函数
     let leaderboardData;
-    
+
     try {
       const fetchParams = {
         sessionId: task.sessionName, // 使用会话名称而不是数据库ID
@@ -112,16 +112,16 @@ async function fetchAndSendSingleRoomData(task: RoomTask): Promise<void> {
 
     // 格式化并发送数据
     const { meiliTopInfo = [], wealthTopInfo = [] } = leaderboardData.data || {};
-    const markdownContent = formatLeaderboardToMarkdown(meiliTopInfo, wealthTopInfo, `房间 ${task.roomId}`);
-    console.info(`发送榜单 markdown 数据:\n ${markdownContent}`)
-
-    try {
-      await sendWeixinWebhookMarkdown({ key: task.webhookKey, content: markdownContent });
-      console.log(`✅ [leaderboard-scheduler] 房间 ${task.roomId} 榜单数据发送成功`);
-    } catch (error) {
-      console.error(`❌ [leaderboard-scheduler] 房间 ${task.roomId} 榜单数据发送失败:`, error);
+    if (meiliTopInfo.length || wealthTopInfo.length) {
+      const markdownContent = formatLeaderboardToMarkdown(meiliTopInfo, wealthTopInfo, `房间 ${task.roomId}`);
+      console.info(`发送榜单 markdown 数据:\n ${markdownContent}`)
+      try {
+        await sendWeixinWebhookMarkdown({ key: task.webhookKey, content: markdownContent });
+        console.log(`✅ [leaderboard-scheduler] 房间 ${task.roomId} 榜单数据发送成功`);
+      } catch (error) {
+        console.error(`❌ [leaderboard-scheduler] 房间 ${task.roomId} 榜单数据发送失败:`, error);
+      }
     }
-
   } catch (error) {
     console.error(`❌ [leaderboard-scheduler] 处理房间 ${task.roomId} 榜单数据时出错:`, error);
   }
@@ -149,7 +149,7 @@ async function collectAllRoomTasks(): Promise<RoomTask[]> {
       if (!checkSessionInUse(viewId)) {
         continue;
       }
-      
+
       const urlMatch = session.leaderboard_webhook_url!.match(/key=([^&]+)/);
       if (!urlMatch) {
         console.error(`❌ [leaderboard-scheduler] 会话 ${session.name} 的 webhook URL 格式无效: ${session.leaderboard_webhook_url}`);
@@ -208,7 +208,7 @@ export class LeaderboardScheduler {
   private roomTasks: RoomTask[] = [];
   private isTaskRunning = false;
 
-  private constructor() {}
+  private constructor() { }
 
   /**
    * 获取单例实例
@@ -255,7 +255,7 @@ export class LeaderboardScheduler {
   private async checkAndManageLeaderboardTask(): Promise<void> {
     try {
       const hasMonitoring = hasActiveMonitoring();
-      
+
       if (hasMonitoring && !this.leaderboardTaskInterval) {
         // 开启监控，启动榜单任务
         await this.startLeaderboardTask();
@@ -331,7 +331,7 @@ export class LeaderboardScheduler {
       // 如果房间列表为空，重新获取房间列表
       if (this.roomTasks.length === 0) {
         await this.refreshRoomTasks();
-        
+
         if (this.roomTasks.length === 0) {
           console.log('📝 [leaderboard-scheduler] 没有需要处理的房间任务');
           return;
@@ -344,7 +344,7 @@ export class LeaderboardScheduler {
         this.currentRoomIndex = 0;
         // 可选：重新获取房间列表以获取最新的配置
         await this.refreshRoomTasks();
-        
+
         if (this.roomTasks.length === 0) {
           console.log('📝 [leaderboard-scheduler] 没有需要处理的房间任务');
           return;
@@ -376,7 +376,7 @@ export class LeaderboardScheduler {
       clearInterval(this.monitoringCheckInterval);
       this.monitoringCheckInterval = null;
     }
-    
+
     this.stopLeaderboardTask();
     console.log('🛑 [leaderboard-scheduler] 榜单调度器已完全停止');
   }
