@@ -27,7 +27,6 @@ function joinRoom(roomId: number, channelId: string, daidaiName: string, session
           return
         }
         setTimeout(() => {
-          updateLog(sessionId, 'info', `重连中......`, roomId.toString())
           daiDaiChatRoomSocket.connect().then()
         })
       },
