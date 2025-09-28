@@ -497,8 +497,8 @@ onUnmounted(() => {
       />
     </template>
     <template #action="{ row }">
-      <Button class="mr-2" type="primary" @click="openBrowser(row)">
-        打开
+      <Button class="mr-2" type="default" @click="openBrowser(row)">
+       预登录
       </Button>
       <Button class="mr-2" type="primary" @click="openConfigModal(row)">
         配置房间

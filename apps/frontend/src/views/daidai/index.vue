@@ -452,7 +452,7 @@ onUnmounted(() => {
         <Button class="mr-2" type="default" @click="() => botModalApi.open()">
           机器人管理
         </Button>
-        <Button class="mr-2" type="primary" @click="() => accountModalApi.open()">
+        <Button class="mr-2" type="default" @click="() => accountModalApi.open()">
           管理账号
         </Button>
         <Button class="mr-2" type="primary" :danger="monitorButtonDanger" :loading="isOperating" :disabled="isOperating"
