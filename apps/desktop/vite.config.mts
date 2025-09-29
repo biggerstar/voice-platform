@@ -8,7 +8,6 @@ import { defineConfig, type ConfigEnv, type UserConfig } from 'vite';
 import electron from 'vite-plugin-electron/simple';
 import createElectronConfig from './electron.config';
 
-
 export default defineConfig(async (config: ConfigEnv): Promise<UserConfig> => {
   const isBuild = config.command === 'build';
   return {
@@ -35,20 +34,10 @@ export default defineConfig(async (config: ConfigEnv): Promise<UserConfig> => {
         watchDir: 'src/preload',
         minify: true,
         resolveAlias: { '@': path.resolve(__dirname, 'src') },
-        vite: {
-          build: {
-            chunkSizeWarningLimit: 2000,
-            rollupOptions: {
-              external: [
-                '@yxim/nim-web-sdk'
-              ]
-            }
-          }
-        }
       }),
       copyInPackagePlugin([
         {
-          moduleName: '@marketing/frontend-1688-taobao',
+          moduleName: '@marketing/frontend',
           src: 'dist/',
           dest: 'marketing/pages/',
           command: 'build',

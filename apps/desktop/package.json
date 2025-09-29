@@ -13,9 +13,9 @@
     "build:prod": "rimraf marketing && pnpm vite build --mode production",
     "preview:electron": "electron marketing/main/index.js",
     "pack:unpack": "pnpm -w run build && electron-builder --dir",
-    "pack:win": "pnpm -w run build && ELECTRON_CACHE=/tmp/electron-cache electron-builder --win",
-    "pack:mac": "pnpm -w run build && ELECTRON_CACHE=/tmp/electron-cache electron-builder --mac",
-    "pack:linux": "pnpm -w run build && ELECTRON_CACHE=/tmp/electron-cache electron-builder --linux"
+    "pack:win": "pnpm -w run build && npm run build:prod && ELECTRON_CACHE=/tmp/electron-cache electron-builder --win",
+    "pack:mac": "pnpm -w run build && npm run build:prod && ELECTRON_CACHE=/tmp/electron-cache electron-builder --mac",
+    "pack:linux": "pnpm -w run build && npm run build:prod && ELECTRON_CACHE=/tmp/electron-cache electron-builder --linux"
   },
   "dependencies": {
     "@xcodebuild/global-proxy": "^0.0.6",

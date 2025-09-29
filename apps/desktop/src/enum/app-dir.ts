@@ -7,6 +7,6 @@ export enum ApplicationDirEnum {
   web = 'pages',
   webPublic = 'pages/public',
   extensions = 'extensions',
-  localAppData = 'ecommerce-crawler' // 用户数据目录，这里隐藏在 Chromium 中
+  localAppData = 'voice-platform' // 用户数据目录，这里隐藏在 Chromium 中
 }
 
