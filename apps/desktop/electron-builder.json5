@@ -1,9 +1,9 @@
 // @see https://www.electron.build/configuration/configuration
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "god",
+  "appId": "com.marketing.desktop",
   "asar": true,
-  "productName": "FLJ内部使用-拼多多淘宝1688爬取信息",
+  "productName": "带带采集器",
   "directories": {
     "output": "release/${version}",
   },
