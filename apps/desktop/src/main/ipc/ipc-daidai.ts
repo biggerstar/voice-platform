@@ -89,6 +89,7 @@ async function createSingleMirrorTaskView(options: { name: string; type: string;
     const viewHeight = 200;
     const offscreenX = screenWidth + 100; // 移动到屏幕右侧外面
     const offscreenY = 0;
+    mirrorTaskView.webContents.setAudioMuted(true)
     mirrorTaskView.setBounds({
       x: offscreenX,
       y: offscreenY,
