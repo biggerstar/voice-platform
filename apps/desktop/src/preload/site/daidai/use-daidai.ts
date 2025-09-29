@@ -13,7 +13,7 @@ function joinRoom(roomId: number, channelId: string, sessionId: string) {
   const account = `wp_${getUid()}`
   const authorization = getAuthorization()
   let reconnectCont: number = 0
-  const maxReconnect: number = 10
+  const maxReconnect: number = 20
 
   // 生成唯一的 socket key
   const socketKey = `${roomId}_${sessionId}`;
