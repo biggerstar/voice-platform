@@ -67,7 +67,7 @@ function joinRoom(roomId: number, channelId: string, sessionId: string) {
         }
         setTimeout(() => {
           daiDaiChatRoomSocket!.connect().then()
-        })
+        }, 20 * 1000)
       },
       onconnect(data: any) {
         console.info('已连接: ', this.account, data)
@@ -192,6 +192,8 @@ function checkLoginStatusAndUpdate(daidaiName: string) {
   }
 }
 
+const setIntervalRef = setInterval
+
 export function useDaiDai() {
   console.info('[useDaiDai] 加载成功')
   const daidaiName = process.argv.find(arg => arg.startsWith('daidai-name='))?.split('=')[1] || ''
@@ -199,7 +201,7 @@ export function useDaiDai() {
   const daidaiPrelogin = process.argv.find(arg => arg.startsWith('daidai-prelogin='))?.split('=')[1] || ''
 
   checkLoginStatusAndUpdate(daidaiName)
-  setInterval(() => checkLoginStatusAndUpdate(daidaiName), 10000)
+  setIntervalRef(() => checkLoginStatusAndUpdate(daidaiName), 3000)
 
   // 监听重连房间事件
   ipcRenderer.on('reconnect-room-request', (event, data: {
@@ -243,7 +245,8 @@ export function useDaiDai() {
 
       // 并行获取魅力榜和财富榜数据
       const [meiliTopInfo, wealthTopInfo] = await Promise.all([
-        socket.fetchRoomMeiliTopInfo(roomId),
+        // socket.fetchRoomMeiliTopInfo(roomId),
+        [],
         socket.fetchRoomWealthTopInfo(roomId)
       ]);
 

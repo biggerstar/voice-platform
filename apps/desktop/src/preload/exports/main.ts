@@ -131,6 +131,13 @@ const __API__ = {
   },
   getOneBot(id: string) {
     return ipcRenderer.invoke('get-one-bot', id);
+  },
+  // 统计相关接口
+  getDaidaiStats() {
+    return ipcRenderer.invoke('get-daidai-stats');
+  },
+  resetDaidaiStats() {
+    return ipcRenderer.invoke('reset-daidai-stats');
   }
 }
 window['__API__'] = __API__;

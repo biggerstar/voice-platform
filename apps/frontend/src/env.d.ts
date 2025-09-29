@@ -153,6 +153,9 @@ declare global {
     updateBot(id: string, data: Record<any, any>): Promise<BotResponse>
     deleteBot(ids: string[]): Promise<BotResponse>
     getOneBot(id: string): Promise<BotResponse>
+    // 统计相关接口
+    getDaidaiStats(): Promise<{ success: boolean; data?: { enterRoomCount: number; wealthRankCount: number }; error?: string }>
+    resetDaidaiStats(): Promise<{ success: boolean; error?: string }>
   }
 
   declare const __TABLE_API__: {

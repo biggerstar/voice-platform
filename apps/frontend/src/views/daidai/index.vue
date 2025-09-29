@@ -25,12 +25,17 @@ const isMonitoring = ref(false); // 是否正在监控
 const isOperating = ref(false); // 是否正在执行操作（防快速点击）
 const activeTaskCount = ref(0); // 当前活跃的任务数量
 
+// 统计数据管理
+const enterRoomCount = ref(0); // 进房发送次数
+const wealthRankCount = ref(0); // 财富榜发送次数
+
 // 数据更新状态
 let curTotal = -1
 let lastDataHash = ''
 let loopUpdateTimer: any
 let statusCheckTimer: any
 let loginStatusCheckTimer: any
+let statsUpdateTimer: any
 
 // ==================== 计算属性 ====================
 // 计算按钮文本和样式
@@ -160,6 +165,36 @@ async function checkMonitorStatus() {
   }
 }
 
+// ==================== 统计数据管理函数 ====================
+// 获取统计数据
+async function getStatisticsData() {
+  try {
+    const result = await __API__.getDaidaiStats();
+    if (result.success && result.data) {
+      enterRoomCount.value = result.data.enterRoomCount || 0;
+      wealthRankCount.value = result.data.wealthRankCount || 0;
+    }
+  } catch (error) {
+    console.error('获取统计数据失败:', error);
+  }
+}
+
+// 重置统计数据
+async function resetStatistics() {
+  try {
+    const result = await __API__.resetDaidaiStats();
+    if (result.success) {
+      enterRoomCount.value = 0;
+      wealthRankCount.value = 0;
+    } else {
+      message.error('重置统计数据失败');
+    }
+  } catch (error) {
+    console.error('重置统计数据失败:', error);
+    message.error('重置统计数据失败');
+  }
+}
+
 // 验证 webhook 配置
 async function validateWebhookConfig(sessions: any[]): Promise<{ valid: boolean; message: string }> {
   try {
@@ -284,6 +319,7 @@ async function startMonitoring() {
     if (result.success) {
       console.log('监控任务启动成功:', result);
       await checkMonitorStatus(); // 更新状态
+      await resetStatistics(); // 重置统计数据
     } else {
       console.error('监控任务启动失败:', result.error);
     }
@@ -378,6 +414,9 @@ function hasDataChanged(newData: any[], newTotal: number): boolean {
 onMounted(async () => {
   // 检查初始监控状态
   await checkMonitorStatus();
+  
+  // 初始化统计数据
+  await getStatisticsData();
 
   // 定期检查日志列表更新
   loopUpdateTimer = setInterval(async () => {
@@ -407,6 +446,11 @@ onMounted(async () => {
     }
   }, 5000)
 
+  // 定期更新统计数据（每3秒更新一次）
+  statsUpdateTimer = setInterval(async () => {
+    await getStatisticsData();
+  }, 3000)
+
   // 立即执行一次登录状态检查
   try {
     const sessionResult = await __API__.getAccountSessionList({ where: { type: 'daidai' } });
@@ -433,6 +477,7 @@ onMounted(async () => {
 onUnmounted(() => {
   clearInterval(loopUpdateTimer)
   clearInterval(statusCheckTimer)
+  clearInterval(statsUpdateTimer)
   clearInterval(loginStatusCheckTimer)
 })
 
@@ -449,6 +494,21 @@ onUnmounted(() => {
         </Button>
       </template>
       <template #toolbar-tools>
+        <!-- 统计信息显示 -->
+        <div class="mr-4 flex items-center space-x-4 text-sm">
+          <div class="flex items-center space-x-1">
+            <span class="text-gray-600">进房发送:</span>
+            <span class="font-semibold text-blue-600">{{ enterRoomCount }}</span>
+          </div>
+          <div class="flex items-center space-x-1">
+            <span class="text-gray-600">财富榜发送:</span>
+            <span class="font-semibold text-green-600">{{ wealthRankCount }}</span>
+          </div>
+          <Button size="small" type="text" @click="resetStatistics" title="重置统计数据">
+            重置
+          </Button>
+        </div>
+        
         <Button class="mr-2" type="default" @click="() => botModalApi.open()">
           机器人管理
         </Button>

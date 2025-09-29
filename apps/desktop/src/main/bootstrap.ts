@@ -6,6 +6,7 @@ import '../orm/data-source';
 import "./data-parser";
 import "./hotkey";
 import "./ipc";
+import { resetAllStatCounts } from "./ipc/ipc-daidai";
 import { initializeSchedulers } from "./scheduler";
 import "./windows/app/auth";
 
@@ -20,6 +21,8 @@ async function bootstrap() {
   }
   // 初始化定时任务
   await initializeSchedulers();
+  // 初始化统计计数（软件启动时重置计数）
+  await resetAllStatCounts();
   setupTitlebar()
 }
 

@@ -1,7 +1,7 @@
 import { AppDataSource } from '@/orm/data-source';
 import { AccountSessionEntity } from '@/orm/entities/account-session';
-import { checkSessionInUse, fetchRoomLeaderboardData, getMirrorTaskStatus } from '../ipc/ipc-daidai';
-import { sendWeixinWebhookMarkdown } from '../webhook/weixin';
+import { checkSessionInUse, fetchRoomLeaderboardData, getMirrorTaskStatus, incrementWealthRankCount } from '../ipc/ipc-daidai';
+import { sendWeixinWebhookText } from '../webhook/weixin';
 
 /**
  * 获取排名对应的 emoji
@@ -19,6 +19,55 @@ function getRankEmoji(rank: number): string {
   } else {
     return '㉑';
   }
+}
+
+
+/**
+ * 格式化榜单数据为 Text 格式
+ */
+function formatLeaderboardToText(meiliTopInfo: any[], wealthTopInfo: any[], roomName?: string): string {
+  const now = new Date();
+  const timeStr = now.toLocaleString('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  let markdown = ''
+  // // 魅力榜
+  // if (meiliTopInfo && meiliTopInfo.length > 0) {
+  //   markdown += `魅力榜 💎 \n`;
+  //   meiliTopInfo.forEach((item, index) => {
+  //     const rank = index + 1;
+  //     const emoji = getRankEmoji(rank);
+  //     const nickname = item.nickname || item.name;
+  //     if (nickname) {
+  //       markdown += `${emoji}  ${item.uid} - ${nickname} \n`;
+  //     }
+  //   });
+  // }
+  // markdown += ` \n`;
+
+  // 财富榜
+  if (wealthTopInfo && wealthTopInfo.length > 0) {
+    markdown += ` 财富榜 💰 \n`;
+    wealthTopInfo.forEach((item, index) => {
+      const rank = index + 1;
+      const emoji = getRankEmoji(rank);
+      const nickname = item.nickname || item.name;
+      if (nickname) {
+        markdown += `${emoji}  ${item.uid} - ${nickname} \n`;
+      }
+    });
+  }
+  markdown += `\n`;
+  markdown += roomName;
+  markdown += `\n更新时间: ${timeStr}\n`;
+
+  return markdown;
 }
 
 /**
@@ -113,11 +162,13 @@ async function fetchAndSendSingleRoomData(task: RoomTask): Promise<void> {
     // 格式化并发送数据
     const { meiliTopInfo = [], wealthTopInfo = [] } = leaderboardData.data || {};
     if (meiliTopInfo.length || wealthTopInfo.length) {
-      const markdownContent = formatLeaderboardToMarkdown(meiliTopInfo, wealthTopInfo, `房间 ${task.roomId}`);
+      const markdownContent = formatLeaderboardToText(meiliTopInfo, wealthTopInfo, `房间 ${task.roomId}`);
       console.info(`发送榜单 markdown 数据:\n ${markdownContent}`)
       try {
-        await sendWeixinWebhookMarkdown({ key: task.webhookKey, content: markdownContent });
+        await sendWeixinWebhookText({ key: task.webhookKey, content: markdownContent });
         console.log(`✅ [leaderboard-scheduler] 房间 ${task.roomId} 榜单数据发送成功`);
+        // 增加财富榜统计计数
+        await incrementWealthRankCount();
       } catch (error) {
         console.error(`❌ [leaderboard-scheduler] 房间 ${task.roomId} 榜单数据发送失败:`, error);
       }

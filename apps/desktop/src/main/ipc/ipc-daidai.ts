@@ -1,6 +1,7 @@
 import { globalEnv } from "@/global/global-env";
 import { globalMainPathParser } from "@/global/global-main-path-parser";
 import { AppDataSource } from "@/orm/data-source";
+import { AppConfigEntity } from "@/orm/entities/app-config";
 import { DaidaiLog } from "@/orm/entities/daidai-log";
 import { UserDeduplication } from "@/orm/entities/user-deduplication";
 import { ipcMain, screen, WebContentsView } from "electron";
@@ -13,6 +14,8 @@ import { mainWindow } from "../windows/app/app";
 const daidaiLogRepository = AppDataSource.getRepository(DaidaiLog);
 // 去重仓库
 const userDeduplicationRepository = AppDataSource.getRepository(UserDeduplication);
+// 配置仓库
+const appConfigRepository = AppDataSource.getRepository(AppConfigEntity);
 
 // 去重时间窗口：1小时
 const duplicateTime = 60 * 60 * 1000;
@@ -485,26 +488,37 @@ ipcMain.handle('report-dai-dai-event', async (_, reportData: { sessionId: string
           ? userInfo.favoriteGames.join('、')
           : '无';
 
-        const webhookContent = `## 🎮 进房消息
-> **用户ID：** ${userInfo.userId}
-> **昵称：** ${userInfo.nickName}
-> **姓别：** ${userInfo.sex}
-> **等级：** ${userInfo.wealthLevelName}
-> **是否萌新：** ${userInfo.mengxin ? '是' : '否'}
-> **喜欢的内容：** ${favoriteGamesText}
+//         const webhookContent = `## 🎮 进房消息
+// > **用户ID：** ${userInfo.userId}
+// > **昵称：** ${userInfo.nickName}
+// > **姓别：** ${userInfo.sex}
+// > **等级：** ${userInfo.wealthLevelName}
+// > **是否萌新：** ${userInfo.mengxin ? '是' : '否'}
+// > **喜欢的内容：** ${favoriteGamesText}
 
----
-**房间ID：** ${roomId}  
-**当前时间：** ${new Date().toLocaleString('zh-CN')}`;
+// ---
+// **房间ID：** ${roomId}  
+// **当前时间：** ${new Date().toLocaleString('zh-CN')}`;
 
+   const webhookContent = `🎮 进房消息
+用户ID: ${userInfo.userId}
+昵称: ${userInfo.nickName}
+姓别: ${userInfo.sex}
+等级: ${userInfo.wealthLevelName}
+是否萌新: ${userInfo.mengxin ? '是' : '否'}
+喜欢的内容: ${favoriteGamesText}
+
+当前时间: ${new Date().toLocaleString('zh-CN')}`;
         const result = await sendWebhookBySession({
           sessionId,
           content: webhookContent,
-          msgType: 'markdown'
+          msgType: 'text'
         });
 
         if (result.success) {
           console.info(`📤 [report-dai-dai-event] Webhook 发送成功 - sessionId: ${sessionId}`);
+          // 增加进房统计计数
+          await incrementEnterRoomCount();
         } else {
           console.error(`❌ [report-dai-dai-event] Webhook 发送失败 - sessionId: ${sessionId}, error: ${result.error}`);
         }
@@ -702,5 +716,120 @@ export async function fetchRoomLeaderboardData(options: {
     console.error('❌ [fetchRoomLeaderboardData] 获取榜单数据失败:', error);
     return { success: false, error: error.message };
   }
+}
+
+// ==================== 统计计数管理 ====================
+
+// 统计计数的配置键
+const STATS_KEYS = {
+  ENTER_ROOM_COUNT: 'daidai_enter_room_count',
+  WEALTH_RANK_COUNT: 'daidai_wealth_rank_count'
+};
+
+/**
+ * 获取统计计数
+ * @param key 统计键
+ * @returns 计数值
+ */
+async function getStatCount(key: string): Promise<number> {
+  try {
+    const config = await appConfigRepository.findOne({ where: { key } });
+    return config ? parseInt(config.value) || 0 : 0;
+  } catch (error) {
+    console.error(`获取统计计数失败 [${key}]:`, error);
+    return 0;
+  }
+}
+
+/**
+ * 设置统计计数
+ * @param key 统计键
+ * @param value 计数值
+ */
+async function setStatCount(key: string, value: number): Promise<void> {
+  try {
+    const config = await appConfigRepository.findOne({ where: { key } });
+    if (config) {
+      config.value = value.toString();
+      await appConfigRepository.save(config);
+    } else {
+      const newConfig = new AppConfigEntity();
+      newConfig.key = key;
+      newConfig.value = value.toString();
+      await appConfigRepository.save(newConfig);
+    }
+  } catch (error) {
+    console.error(`设置统计计数失败 [${key}]:`, error);
+  }
+}
+
+/**
+ * 增加统计计数
+ * @param key 统计键
+ * @param increment 增加的数量，默认为1
+ */
+async function incrementStatCount(key: string, increment: number = 1): Promise<number> {
+  try {
+    const currentCount = await getStatCount(key);
+    const newCount = currentCount + increment;
+    await setStatCount(key, newCount);
+    return newCount;
+  } catch (error) {
+    console.error(`增加统计计数失败 [${key}]:`, error);
+    return 0;
+  }
+}
+
+/**
+ * 重置所有统计计数
+ */
+export async function resetAllStatCounts(): Promise<void> {
+  try {
+    await setStatCount(STATS_KEYS.ENTER_ROOM_COUNT, 0);
+    await setStatCount(STATS_KEYS.WEALTH_RANK_COUNT, 0);
+    console.log('✅ 所有统计计数已重置');
+  } catch (error) {
+    console.error('❌ 重置统计计数失败:', error);
+  }
+}
+
+// 获取统计数据
+ipcMain.handle('get-daidai-stats', async () => {
+  try {
+    const enterRoomCount = await getStatCount(STATS_KEYS.ENTER_ROOM_COUNT);
+    const wealthRankCount = await getStatCount(STATS_KEYS.WEALTH_RANK_COUNT);
+    
+    return {
+      success: true,
+      data: {
+        enterRoomCount,
+        wealthRankCount
+      }
+    };
+  } catch (error) {
+    console.error('获取统计数据失败:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// 重置统计数据
+ipcMain.handle('reset-daidai-stats', async () => {
+  try {
+    await resetAllStatCounts();
+    return { success: true };
+  } catch (error) {
+    console.error('重置统计数据失败:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// 增加进房统计计数
+async function incrementEnterRoomCount(): Promise<void> {
+  await incrementStatCount(STATS_KEYS.ENTER_ROOM_COUNT);
+}
+
+// 增加财富榜统计计数
+export async function incrementWealthRankCount(): Promise<void> {
+  await incrementStatCount(STATS_KEYS.WEALTH_RANK_COUNT);
 }
 
