@@ -54,18 +54,23 @@ function joinRoom(roomId: number, channelId: string, sessionId: string) {
   daiDaiChatRoomSocket.loadSocketNIMScript().then(_ => {
     daiDaiChatRoomSocket!.setInitOptions({
       ondisconnect(data) {
+        const reason = data['reason'] || data.message || ''
         if (data.code === 20013) {
           updateLog(sessionId, 'info', `同账号派单厅只允许加入一个!!!`, roomId.toString())
           return
         }
-        updateLog(sessionId, 'error', `与房间失去连接(原因: ${data['reason'] || data.message})(正在排队重连)`, roomId.toString())
+        updateLog(sessionId, 'error', `与房间失去连接(原因: ${reason})(正在排队重连)`, roomId.toString())
         if (reconnectCont++ > maxReconnect) {
           updateLog(sessionId, 'error', `重连次数过多，已主动关闭连接!`, roomId.toString())
           // 从 Map 中移除失败的 socket
           socketMap.delete(socketKey);
           return
         }
-        setTimeout(() => {
+        setTimeout(async () => {
+          if (String(reason).includes('managerKick')) {
+            updateLog(sessionId, 'error', `被踢出房间(等待两分钟重连...)`, roomId.toString())
+            await sleep(120 * 1000)
+          }
           daiDaiChatRoomSocket!.connect().then()
         }, 20 * 1000)
       },
