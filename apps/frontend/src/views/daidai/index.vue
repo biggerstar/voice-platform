@@ -348,6 +348,32 @@ async function stopMonitoring() {
     if (result.success) {
       console.log('监控任务停止成功:', result);
       await checkMonitorStatus(); // 更新状态
+      
+      // 停止监控成功后清空所有日志数据
+      try {
+        // 获取所有日志数据的ID
+        const logList = await __API__.getDaidaiLogs({
+          where: { type: 'daidai' },
+          pageSize: 10000,
+          currentPage: 1
+        });
+        
+        if (logList.data && logList.data.items && logList.data.items.length > 0) {
+          const allLogIds = logList.data.items.map((item: any) => item.id);
+          // 删除所有日志数据
+          await __API__.deleteDaidaiLogs(allLogIds);
+          console.log('已清空所有日志数据');
+        }
+        
+        // 清空前端表格显示的数据
+        await gridApi.grid.loadData([]);
+        console.log('已清空前端表格数据');
+        
+      } catch (clearError) {
+        console.error('清空日志数据失败:', clearError);
+        // 即使清空失败，也要重新加载表格数据以保持同步
+        await gridApi.reload();
+      }
     } else {
       console.error('监控任务停止失败:', result.error);
     }
