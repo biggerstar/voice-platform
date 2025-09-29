@@ -124,6 +124,7 @@ const [Grid, gridApi] = useVbenVxeGrid({
 // 删除选中行
 async function deleteRows() {
   const grid = gridApi.grid
+  if (!grid) return
   const selecterRecord = grid.getCheckboxRecords()
   const deleteIds = selecterRecord.map(item => item.id)
 

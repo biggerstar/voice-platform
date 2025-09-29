@@ -493,7 +493,7 @@ onUnmounted(() => {
     <template #enabled="{ row }">
       <Switch
         :checked="row.enabled !== false"
-        @change="(checked) => handleEnabledChange(row.id, !!checked)"
+        @change="(checked) => handleEnabledChange(row.id, !!checked)"    
       />
     </template>
     <template #action="{ row }">

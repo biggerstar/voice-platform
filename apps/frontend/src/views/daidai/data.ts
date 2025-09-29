@@ -7,7 +7,7 @@ import dayjs from 'dayjs';
 const formatTimeField = (time: string | null): string => {
   if (!time) return '';
   try {
-    return dayjs(+time).subtract(8, 'hour').format('MM-DD HH:mm:ss');
+    return dayjs(Number(time)).subtract(8, 'hour').format('MM-DD HH:mm:ss');
   } catch (error) {
     return time || '';
   }
